@@ -641,24 +641,57 @@
 
             const CenterPanelContent = (
                 <>
-                    <div className="p-2 border-b border-[#3e3e3e] flex items-center gap-2 flex-shrink-0">
-                        {isMobile && <button onClick={() => setShowMobileTools(true)} className="fluent-btn"><Icon name="menu"/></button>}
-                        <Icon name="search" className="text-gray-400"/>
-                        <input className="fluent-input bg-transparent border-none flex-1" placeholder="Filtrar..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
-                        
-                        {/* NUEVO FILTRO DE ESTADO DE TAGS */}
-                        <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-                            <option value="all">Todos</option>
-                            <option value="tagged">Con Etiquetas</option>
-                            <option value="untagged">Sin Etiquetas</option>
-                        </select>
-                        
-                        <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={sortMode} onChange={e=>setSortMode(e.target.value)}><option value="name_asc">A-Z</option><option value="name_desc">Z-A</option><option value="tags_count"># Tags</option></select>
-                        <div className="flex bg-[#333] rounded p-0.5">
-                            <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
-                            <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
-                            <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Eliminar Seleccionados" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
-                        </div>
+                    <div className="p-2 border-b border-[#3e3e3e] flex-shrink-0">
+                        {isMobile ? (
+                            // Mobile Layout: Column
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setShowMobileTools(true)} className="fluent-btn flex-shrink-0"><Icon name="menu"/></button>
+                                    <div className="flex-1 flex items-center bg-[#1e1e1e] border border-[#3e3e3e] rounded px-2">
+                                        <Icon name="search" className="text-gray-400 flex-shrink-0"/>
+                                        <input className="fluent-input bg-transparent border-none flex-1 p-2" placeholder="Filtrar..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                                    <select className="bg-[#333] text-white text-xs p-2 rounded border-none outline-none flex-shrink-0" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+                                        <option value="all">Todos</option>
+                                        <option value="tagged">Con Tags</option>
+                                        <option value="untagged">Sin Tags</option>
+                                    </select>
+                                    <select className="bg-[#333] text-white text-xs p-2 rounded border-none outline-none flex-shrink-0" value={sortMode} onChange={e=>setSortMode(e.target.value)}>
+                                        <option value="name_asc">A-Z</option>
+                                        <option value="name_desc">Z-A</option>
+                                        <option value="tags_count"># Tags</option>
+                                    </select>
+                                    <div className="flex bg-[#333] rounded p-0.5 flex-shrink-0 ml-auto">
+                                        <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
+                                        <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
+                                        <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Eliminar Seleccionados" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            // Desktop Layout: Row (Original)
+                            <div className="flex items-center gap-2">
+                                <Icon name="search" className="text-gray-400"/>
+                                <input className="fluent-input bg-transparent border-none flex-1" placeholder="Filtrar..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
+                                <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+                                    <option value="all">Todos</option>
+                                    <option value="tagged">Con Etiquetas</option>
+                                    <option value="untagged">Sin Etiquetas</option>
+                                </select>
+                                <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={sortMode} onChange={e=>setSortMode(e.target.value)}>
+                                    <option value="name_asc">A-Z</option>
+                                    <option value="name_desc">Z-A</option>
+                                    <option value="tags_count"># Tags</option>
+                                </select>
+                                <div className="flex bg-[#333] rounded p-0.5">
+                                    <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
+                                    <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
+                                    <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Eliminar Seleccionados" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 min-h-0" onScroll={handleScroll}>
                         {!files.length && !loading && <div className="h-full flex flex-col items-center justify-center text-gray-500"><Icon name="folder-open" size={48} className="mb-4 opacity-50"/><p>Sube una carpeta o ZIP</p></div>}
@@ -692,10 +725,13 @@
                             <h2 className="font-bold text-xs uppercase text-gray-500">Vista Previa</h2>
                             {isCropping ? <div className="flex gap-1"><button onClick={()=>setCropRatio(NaN)} className="fluent-btn fluent-btn-sm">Libre</button><button onClick={()=>setCropRatio(1)} className="fluent-btn fluent-btn-sm">1:1</button><button onClick={()=>setCropRatio(2/3)} className="fluent-btn fluent-btn-sm">2:3</button><button onClick={()=>setCropRatio(3/2)} className="fluent-btn fluent-btn-sm">3:2</button><button onClick={saveCrop} className="fluent-btn fluent-btn-sm bg-[#0067c0]">Guardar</button><button onClick={()=>setIsCropping(false)} className="text-xs text-gray-400 hover:text-white px-2">X</button></div> : <button onClick={()=>setIsCropping(true)} className="text-xs flex gap-1 items-center hover:text-white text-gray-400"><Icon name="crop" size={12}/> Recortar</button>}
                         </div>
+                        
+                        {/* IMAGEN PREVIEW RESIZABLE CON HANDLE */}
                         <div style={{height: previewHeight}} className="w-full bg-[#1a1a1a] border border-[#3e3e3e] flex items-center justify-center overflow-hidden relative checkerboard">
                             {isCropping ? <img ref={cropImgRef} src={activeFile.url} className="max-w-full block" /> : <img src={activeFile.url} className="w-full h-full object-contain" />}
                         </div>
                         <div className="resizer-h mt-1 mb-2" onMouseDown={(e) => startDrag(e, 'preview')} onTouchStart={(e) => startDrag(e, 'preview')}><div className="grip"></div></div>
+                        
                         <div className="text-xs text-gray-400 text-center select-text">{activeFile.originalName}</div>
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
