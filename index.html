@@ -96,7 +96,7 @@
         .resizer-v:hover, .resizer-v.dragging { background: #0067c0; }
 
         .resizer-h { 
-            height: 8px; /* Revertido a 8px */
+            height: 8px; 
             background: #252525; 
             cursor: row-resize; 
             z-index: 10; 
@@ -257,7 +257,7 @@
             const [previewHeight, setPreviewHeight] = useState(350);
             const [viewMode, setViewMode] = useState('list');
             const [sortMode, setSortMode] = useState('name_asc');
-            const [filterStatus, setFilterStatus] = useState('all'); // NUEVO ESTADO PARA FILTRO CON/SIN TAGS
+            const [filterStatus, setFilterStatus] = useState('all');
             
             const [filterText, setFilterText] = useState("");
             const [prefix, setPrefix] = useState("");
@@ -271,11 +271,10 @@
             const cropImgRef = useRef(null);
             const [cropperInstance, setCropperInstance] = useState(null);
 
-            // Refs for dragging
             const isDraggingLeft = useRef(false);
             const isDraggingRight = useRef(false);
             const isDraggingPreview = useRef(false);
-            const lastMousePos = useRef({ x: 0, y: 0 }); // Para tracking delta
+            const lastMousePos = useRef({ x: 0, y: 0 }); 
             
             const dragItem = useRef();
             const dragOverItem = useRef();
@@ -303,12 +302,9 @@
             const processedFiles = useMemo(() => {
                 let res = files.filter(f => {
                     const matchesText = f.newName.toLowerCase().includes(filterText.toLowerCase()) || f.tags.toLowerCase().includes(filterText.toLowerCase());
-                    
-                    // LÓGICA DE FILTRADO CON/SIN TAGS
                     let matchesStatus = true;
                     if (filterStatus === 'tagged') matchesStatus = f.tagCount > 0;
                     if (filterStatus === 'untagged') matchesStatus = f.tagCount === 0;
-
                     return matchesText && matchesStatus;
                 });
                 if (sortMode === 'name_desc') res.sort((a,b)=>b.newName.localeCompare(a.newName));
@@ -349,7 +345,6 @@
 
             const handleScroll = (e) => { if (e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight < 300) setVisibleLimit(prev => Math.min(prev + 40, files.length)); };
 
-            // --- UNIFIED DRAG HANDLER (Mouse & Touch) ---
             useEffect(() => {
                 const handleMove = (clientX, clientY) => {
                     const dx = clientX - lastMousePos.current.x;
@@ -357,43 +352,20 @@
                     lastMousePos.current = { x: clientX, y: clientY };
 
                     if (isDraggingLeft.current) setSidebarWidth(w => Math.max(200, Math.min(600, w + dx))); 
-                    
                     if (isDraggingLeft.current) setSidebarWidth(Math.max(200, Math.min(600, clientX)));
                     if (isDraggingRight.current) setEditorWidth(Math.max(300, Math.min(800, window.innerWidth - clientX)));
-                    
                     if (isDraggingPreview.current) setPreviewHeight(p => Math.max(150, Math.min(800, p + dy)));
                 };
 
-                const onMouseMove = (e) => {
-                    if (isDraggingLeft.current || isDraggingRight.current || isDraggingPreview.current) {
-                        e.preventDefault();
-                        handleMove(e.clientX, e.clientY);
-                    }
-                };
+                const onMouseMove = (e) => { if (isDraggingLeft.current || isDraggingRight.current || isDraggingPreview.current) { e.preventDefault(); handleMove(e.clientX, e.clientY); } };
+                const onTouchMove = (e) => { if (isDraggingLeft.current || isDraggingRight.current || isDraggingPreview.current) { e.preventDefault(); const touch = e.touches[0]; handleMove(touch.clientX, touch.clientY); } };
+                const onUp = () => { isDraggingLeft.current = isDraggingRight.current = isDraggingPreview.current = false; document.body.style.cursor = 'default'; };
 
-                const onTouchMove = (e) => {
-                     if (isDraggingLeft.current || isDraggingRight.current || isDraggingPreview.current) {
-                        e.preventDefault();
-                        const touch = e.touches[0];
-                        handleMove(touch.clientX, touch.clientY);
-                    }
-                };
-
-                const onUp = () => {
-                    isDraggingLeft.current = isDraggingRight.current = isDraggingPreview.current = false;
-                    document.body.style.cursor = 'default';
-                };
-
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onUp);
-                document.addEventListener('touchmove', onTouchMove, { passive: false });
-                document.addEventListener('touchend', onUp);
-                
+                document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onUp);
+                document.addEventListener('touchmove', onTouchMove, { passive: false }); document.addEventListener('touchend', onUp);
                 return () => {
-                    document.removeEventListener('mousemove', onMouseMove);
-                    document.removeEventListener('mouseup', onUp);
-                    document.removeEventListener('touchmove', onTouchMove);
-                    document.removeEventListener('touchend', onUp);
+                    document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onUp);
                 };
             }, []);
 
@@ -401,11 +373,9 @@
                 const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                 const clientY = e.touches ? e.touches[0].clientY : e.clientY;
                 lastMousePos.current = { x: clientX, y: clientY };
-
                 if (type === 'left') isDraggingLeft.current = true;
                 if (type === 'right') isDraggingRight.current = true;
                 if (type === 'preview') isDraggingPreview.current = true;
-                
                 document.body.style.cursor = type === 'preview' ? 'row-resize' : 'col-resize';
             };
 
@@ -601,6 +571,16 @@
             };
 
             const deleteSelected = () => { const targets = getTargets(); if (!targets.length || !confirm(`¿Borrar ${targets.length} imágenes?`)) return; const ids = new Set(targets.map(f => f.id)); if (activeId && ids.has(activeId)) { setActiveId(null); setIsCropping(false); } setFiles(prev => prev.filter(f => !ids.has(f.id))); setSelectedIds(new Set()); };
+            
+            // --- NEW CLEAR ALL TAGS FUNCTION ---
+            const clearAllTags = () => {
+                const targets = getTargets();
+                if (targets.length === 0) return;
+                if (!confirm(`¿Borrar todas las etiquetas de ${targets.length} imágenes?`)) return;
+                const ids = new Set(targets.map(f => f.id));
+                updateFiles(f => ids.has(f.id) ? { ...f, tags: '', tagCount: 0 } : f);
+            };
+
             const dedupTags = () => { const ids = new Set(getTargets().map(f => f.id)); let changes = 0; const newF = files.map(f => { if (ids.has(f.id)) { const tags = f.tags.split(',').map(t=>t.trim()).filter(t=>t); const seen = new Set(); const unique = tags.filter(t => { const l = t.toLowerCase(); if(seen.has(l)) return false; seen.add(l); return true; }); if (unique.length !== tags.length) { changes++; return { ...f, tags: unique.join(', '), tagCount: unique.length }; } } return f; }); if (changes) { setFiles(newF); alert(`Corregidos ${changes} archivos.`); } else alert("Sin duplicados."); };
             
             const handleSelect = (id, multi) => { const newS = new Set(multi ? selectedIds : []); if (newS.has(id)) newS.delete(id); else newS.add(id); setSelectedIds(newS); if (!multi || newS.size === 1) { setActiveId(id); setIsCropping(false); } };
@@ -624,6 +604,7 @@
                             <div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Trigger..." value={triggerWord} onChange={e=>setTriggerWord(e.target.value)} /><button onClick={addTrigger} className="fluent-btn"><Icon name="plus" size={14}/></button></div>
                             <div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Borrar tag..." value={tagToDelete} onChange={e=>setTagToDelete(e.target.value)} /><button onClick={deleteTag} className="fluent-btn text-red-400"><Icon name="trash-2" size={14}/></button></div>
                             <div className="space-y-2"><input className="fluent-input" placeholder="Buscar..." value={findText} onChange={e=>setFindText(e.target.value)}/><div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Reemplazo..." value={replaceText} onChange={e=>setReplaceText(e.target.value)} /><button onClick={searchRep} className="fluent-btn">OK</button></div></div>
+                            <button onClick={clearAllTags} className="fluent-btn w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 mt-1"><Icon name="eraser" size={14}/> Limpiar Etiquetas</button>
                         </div>
                         <div className="space-y-2 pt-2 border-t border-[#3e3e3e]">
                             <p className="text-xs font-bold text-gray-500 uppercase">Herramientas</p>
@@ -632,7 +613,16 @@
                             <button onClick={deleteSelected} className="fluent-btn fluent-btn-danger w-full justify-start gap-2"><Icon name="trash" size={14}/> Eliminar (Img+Txt)</button>
                             <button onClick={openConsolidation} className="fluent-btn w-full justify-start gap-2 text-purple-300 hover:text-purple-100"><Icon name="puzzle" size={14}/> 🧩 Consolidar Tags</button>
                             <button onClick={analyzeBuckets} className="fluent-btn w-full justify-start gap-2 text-blue-200 hover:text-blue-100"><Icon name="monitor" size={14}/> 📊 Buckets</button>
-                            <button onClick={findDuplicates} className="fluent-btn w-full justify-start gap-2 bg-[#4a3a1a] border-[#665522] text-[#ffdd88] hover:bg-[#665522]"><Icon name="copy" size={14}/> Buscar Duplicados Vis</button>
+                            <div className="flex flex-col gap-1">
+                                <button onClick={findDuplicates} disabled={dupChecking} className="fluent-btn w-full justify-start gap-2 bg-[#4a3a1a] border-[#665522] text-[#ffdd88] hover:bg-[#665522]">
+                                    <Icon name="copy" size={14}/> Detect Duplicate Images
+                                </button>
+                                {dupChecking && (
+                                    <div className="w-full h-1.5 bg-[#222] rounded-full overflow-hidden">
+                                        <div className="h-full bg-[#ffdd88] transition-all duration-300" style={{width: `${dupProgress}%`}}></div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div className="p-4 border-t border-[#3e3e3e] flex-shrink-0"><button onClick={openExport} className="fluent-btn fluent-btn-primary w-full py-3 font-bold flex justify-center gap-2" disabled={!files.length}><Icon name="download"/> Exportar ZIP</button></div>
