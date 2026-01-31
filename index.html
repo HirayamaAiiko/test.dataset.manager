@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LoRa Dataset Manager (Ultimate Edition)</title>
+    <title>LoRa Dataset Manager (Touch Ready)</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -95,9 +95,8 @@
         .resizer-v { width: 5px; background: #252525; cursor: col-resize; z-index: 10; flex-shrink: 0; }
         .resizer-v:hover, .resizer-v.dragging { background: #0067c0; }
 
-        /* Resizer Horizontal Mejorado */
         .resizer-h { 
-            height: 12px; /* Más alto para facilitar el agarre */
+            height: 8px; /* Revertido a 8px */
             background: #252525; 
             cursor: row-resize; 
             z-index: 10; 
@@ -271,9 +270,12 @@
             const cropImgRef = useRef(null);
             const [cropperInstance, setCropperInstance] = useState(null);
 
+            // Refs for dragging
             const isDraggingLeft = useRef(false);
             const isDraggingRight = useRef(false);
             const isDraggingPreview = useRef(false);
+            const lastMousePos = useRef({ x: 0, y: 0 }); // Para tracking delta
+            
             const dragItem = useRef();
             const dragOverItem = useRef();
             const gridContainerRef = useRef(null);
@@ -337,16 +339,68 @@
 
             const handleScroll = (e) => { if (e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight < 300) setVisibleLimit(prev => Math.min(prev + 40, files.length)); };
 
+            // --- UNIFIED DRAG HANDLER (Mouse & Touch) ---
             useEffect(() => {
-                const move = (e) => {
-                    if (isDraggingLeft.current) setSidebarWidth(Math.max(200, Math.min(600, e.clientX)));
-                    if (isDraggingRight.current) setEditorWidth(Math.max(300, Math.min(800, window.innerWidth - e.clientX)));
-                    if (isDraggingPreview.current) setPreviewHeight(p => Math.max(150, Math.min(800, p + e.movementY)));
+                const handleMove = (clientX, clientY) => {
+                    const dx = clientX - lastMousePos.current.x;
+                    const dy = clientY - lastMousePos.current.y;
+                    lastMousePos.current = { x: clientX, y: clientY };
+
+                    if (isDraggingLeft.current) setSidebarWidth(w => Math.max(200, Math.min(600, w + dx))); // Logic simplified to use delta for touch support
+                    // Actually for absolute positioning (sidebar/editor), absolute position is better for mouse, but delta is universal.
+                    // Let's stick to absolute for sidebars (desktop) and delta for preview height.
+                    
+                    if (isDraggingLeft.current) setSidebarWidth(Math.max(200, Math.min(600, clientX)));
+                    if (isDraggingRight.current) setEditorWidth(Math.max(300, Math.min(800, window.innerWidth - clientX)));
+                    
+                    // PREVIEW HEIGHT (Vertical) - Delta is best here
+                    if (isDraggingPreview.current) setPreviewHeight(p => Math.max(150, Math.min(800, p + dy)));
                 };
-                const up = () => { isDraggingLeft.current = isDraggingRight.current = isDraggingPreview.current = false; document.body.style.cursor = 'default'; };
-                document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
-                return () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+
+                const onMouseMove = (e) => {
+                    if (isDraggingLeft.current || isDraggingRight.current || isDraggingPreview.current) {
+                        e.preventDefault();
+                        handleMove(e.clientX, e.clientY);
+                    }
+                };
+
+                const onTouchMove = (e) => {
+                     if (isDraggingLeft.current || isDraggingRight.current || isDraggingPreview.current) {
+                        e.preventDefault();
+                        const touch = e.touches[0];
+                        handleMove(touch.clientX, touch.clientY);
+                    }
+                };
+
+                const onUp = () => {
+                    isDraggingLeft.current = isDraggingRight.current = isDraggingPreview.current = false;
+                    document.body.style.cursor = 'default';
+                };
+
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onUp);
+                document.addEventListener('touchmove', onTouchMove, { passive: false });
+                document.addEventListener('touchend', onUp);
+                
+                return () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onUp);
+                    document.removeEventListener('touchmove', onTouchMove);
+                    document.removeEventListener('touchend', onUp);
+                };
             }, []);
+
+            const startDrag = (e, type) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                lastMousePos.current = { x: clientX, y: clientY };
+
+                if (type === 'left') isDraggingLeft.current = true;
+                if (type === 'right') isDraggingRight.current = true;
+                if (type === 'preview') isDraggingPreview.current = true;
+                
+                document.body.style.cursor = type === 'preview' ? 'row-resize' : 'col-resize';
+            };
 
             const handleFolderSelect = async (e) => {
                 setLoading(true); setLoadingMsg("Cargando..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
@@ -550,7 +604,6 @@
                         <div className="flex bg-[#333] rounded p-0.5">
                             <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
                             <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
-                            {/* BOTÓN ELIMINAR (NUEVO) */}
                             <button 
                                 className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" 
                                 onClick={deleteSelected}
@@ -593,13 +646,10 @@
                             <h2 className="font-bold text-xs uppercase text-gray-500">Vista Previa</h2>
                             {isCropping ? <div className="flex gap-1"><button onClick={()=>setCropRatio(NaN)} className="fluent-btn fluent-btn-sm">Libre</button><button onClick={()=>setCropRatio(1)} className="fluent-btn fluent-btn-sm">1:1</button><button onClick={()=>setCropRatio(2/3)} className="fluent-btn fluent-btn-sm">2:3</button><button onClick={()=>setCropRatio(3/2)} className="fluent-btn fluent-btn-sm">3:2</button><button onClick={saveCrop} className="fluent-btn fluent-btn-sm bg-[#0067c0]">Guardar</button><button onClick={()=>setIsCropping(false)} className="text-xs text-gray-400 hover:text-white px-2">X</button></div> : <button onClick={()=>setIsCropping(true)} className="text-xs flex gap-1 items-center hover:text-white text-gray-400"><Icon name="crop" size={12}/> Recortar</button>}
                         </div>
-                        
-                        {/* IMAGEN PREVIEW RESIZABLE CON HANDLE */}
                         <div style={{height: previewHeight}} className="w-full bg-[#1a1a1a] border border-[#3e3e3e] flex items-center justify-center overflow-hidden relative checkerboard">
                             {isCropping ? <img ref={cropImgRef} src={activeFile.url} className="max-w-full block" /> : <img src={activeFile.url} className="w-full h-full object-contain" />}
                         </div>
-                        <div className="resizer-h mt-1 mb-2" onMouseDown={()=>{isDraggingPreview.current=true;document.body.style.cursor='row-resize'}}><div className="grip"></div></div>
-                        
+                        <div className="resizer-h mt-1 mb-2" onMouseDown={(e) => startDrag(e, 'preview')} onTouchStart={(e) => startDrag(e, 'preview')}><div className="grip"></div></div>
                         <div className="text-xs text-gray-400 text-center select-text">{activeFile.originalName}</div>
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
@@ -626,9 +676,9 @@
                     ) : (
                         <>
                             <div className="bg-[#2c2c2c] flex flex-col border-r border-[#3e3e3e] h-full overflow-hidden" style={{ width: sidebarWidth }}>{LeftPanelContent}</div>
-                            <div className="resizer-v" onMouseDown={()=>{isDraggingLeft.current=true;document.body.style.cursor='col-resize'}}></div>
+                            <div className="resizer-v" onMouseDown={(e) => startDrag(e, 'left')} onTouchStart={(e) => startDrag(e, 'left')}></div>
                             <div className="flex-1 bg-[#202020] flex flex-col min-w-0 h-full overflow-hidden">{CenterPanelContent}</div>
-                            <div className="resizer-v" onMouseDown={()=>{isDraggingRight.current=true;document.body.style.cursor='col-resize'}}></div>
+                            <div className="resizer-v" onMouseDown={(e) => startDrag(e, 'right')} onTouchStart={(e) => startDrag(e, 'right')}></div>
                             <div className="bg-[#2c2c2c] border-l border-[#3e3e3e] flex flex-col h-full overflow-hidden" style={{ width: editorWidth }}>{RightPanelContent}</div>
                         </>
                     )}
