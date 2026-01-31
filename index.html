@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LoRa Dataset Manager (Fixed Scroll)</title>
+    <title>LoRa Dataset Manager (Ultimate Edition)</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -26,32 +26,24 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
     <style>
-        /* FIX DE SCROLL ROBUSTO */
-        * { box-sizing: border-box; }
+        /* FIX DE SCROLL: Estructura fija al 100% del viewport */
         html, body { 
             height: 100%; 
             width: 100%; 
             margin: 0; 
-            padding: 0; 
-            overflow: hidden; /* Evita scroll en el body, forzando scroll en los divs internos */
+            padding: 0;
+            overflow: hidden; 
             background-color: #1a1a1a; 
             color: #e0e0e0; 
             font-family: 'Segoe UI', sans-serif; 
         }
-        #root { 
-            height: 100%; 
-            width: 100%; 
-            overflow: hidden;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
+        #root { height: 100%; width: 100%; position: absolute; top: 0; left: 0; overflow: hidden; }
 
-        /* Scrollbars personalizados siempre visibles y usables */
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        /* Scrollbars estilo Fluent */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #2c2c2c; }
-        ::-webkit-scrollbar-thumb { background: #555; border-radius: 5px; border: 2px solid #2c2c2c; }
-        ::-webkit-scrollbar-thumb:hover { background: #777; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #666; }
         
         .fluent-input {
             background-color: #1e1e1e;
@@ -76,7 +68,7 @@
             gap: 6px;
             cursor: pointer;
             user-select: none;
-            white-space: nowrap; /* Evita que el texto rompa el botón */
+            white-space: nowrap;
         }
         .fluent-btn:hover:not(:disabled) { background-color: #484848; }
         .fluent-btn:active:not(:disabled) { background-color: #323232; transform: translateY(1px); }
@@ -94,24 +86,36 @@
         .item-card.selected { background-color: #2a3a4a; border-color: #0067c0; }
         .item-card:hover:not(.selected) { background-color: #2d2d2d; }
 
-        /* Resizers */
-        .resizer-v { width: 5px; background: #252525; cursor: col-resize; z-index: 10; transition: background 0.2s; flex-shrink: 0; }
+        /* Checkbox Custom Style */
+        input[type="checkbox"] {
+            accent-color: #0067c0;
+            cursor: pointer;
+        }
+
+        .resizer-v { width: 5px; background: #252525; cursor: col-resize; z-index: 10; flex-shrink: 0; }
         .resizer-v:hover, .resizer-v.dragging { background: #0067c0; }
 
+        /* Resizer Horizontal Mejorado */
         .resizer-h { 
-            height: 8px; 
+            height: 12px; /* Más alto para facilitar el agarre */
             background: #252525; 
             cursor: row-resize; 
             z-index: 10; 
             width: 100%; 
             display: flex; 
+            justify-content: center; 
             align-items: center; 
-            justify-content: center;
-            transition: background 0.2s;
-            flex-shrink: 0;
+            flex-shrink: 0; 
+            border-top: 1px solid #333;
+            border-bottom: 1px solid #333;
         }
         .resizer-h:hover, .resizer-h.dragging { background: #0067c0; }
-        .resizer-h .grip { width: 30px; height: 2px; background: #555; border-radius: 2px; }
+        .resizer-h .grip { 
+            width: 40px; 
+            height: 4px; 
+            background: #666; 
+            border-radius: 2px; 
+        }
 
         .checkerboard {
             background-image: linear-gradient(45deg, #252525 25%, transparent 25%), 
@@ -499,6 +503,7 @@
             const searchRep = () => { if (!findText) return; const ids = new Set(getTargets().map(f => f.id)); updateFiles(f => ids.has(f.id) ? { ...f, tags: f.tags.split(',').map(t=>t.trim()===findText?replaceText:t.trim()).join(', ') } : f); };
             const deleteSelected = () => { const targets = getTargets(); if (!targets.length || !confirm(`¿Borrar ${targets.length} imágenes?`)) return; const ids = new Set(targets.map(f => f.id)); if (activeId && ids.has(activeId)) { setActiveId(null); setIsCropping(false); } setFiles(prev => prev.filter(f => !ids.has(f.id))); setSelectedIds(new Set()); };
             const dedupTags = () => { const ids = new Set(getTargets().map(f => f.id)); let changes = 0; const newF = files.map(f => { if (ids.has(f.id)) { const tags = f.tags.split(',').map(t=>t.trim()).filter(t=>t); const seen = new Set(); const unique = tags.filter(t => { const l = t.toLowerCase(); if(seen.has(l)) return false; seen.add(l); return true; }); if (unique.length !== tags.length) { changes++; return { ...f, tags: unique.join(', '), tagCount: unique.length }; } } return f; }); if (changes) { setFiles(newF); alert(`Corregidos ${changes} archivos.`); } else alert("Sin duplicados."); };
+            
             const handleSelect = (id, multi) => { const newS = new Set(multi ? selectedIds : []); if (newS.has(id)) newS.delete(id); else newS.add(id); setSelectedIds(newS); if (!multi || newS.size === 1) { setActiveId(id); setIsCropping(false); } };
 
             const LeftPanelContent = (
@@ -542,7 +547,19 @@
                         <Icon name="search" className="text-gray-400"/>
                         <input className="fluent-input bg-transparent border-none flex-1" placeholder="Filtrar..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
                         <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={sortMode} onChange={e=>setSortMode(e.target.value)}><option value="name_asc">A-Z</option><option value="name_desc">Z-A</option><option value="tags_count"># Tags</option></select>
-                        <div className="flex bg-[#333] rounded p-0.5"><button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button><button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button></div>
+                        <div className="flex bg-[#333] rounded p-0.5">
+                            <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
+                            <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
+                            {/* BOTÓN ELIMINAR (NUEVO) */}
+                            <button 
+                                className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" 
+                                onClick={deleteSelected}
+                                title="Eliminar Seleccionados"
+                                disabled={selectedIds.size === 0}
+                            >
+                                <Icon name="trash" size={16}/>
+                            </button>
+                        </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 min-h-0" onScroll={handleScroll}>
                         {!files.length && !loading && <div className="h-full flex flex-col items-center justify-center text-gray-500"><Icon name="folder-open" size={48} className="mb-4 opacity-50"/><p>Sube una carpeta o ZIP</p></div>}
@@ -550,6 +567,9 @@
                         <div ref={gridContainerRef} className={viewMode==='grid'?"grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2":"flex flex-col gap-1"}>
                             {visibleFiles.map(f => (
                                 <div key={f.id} id={`file-${f.id}`} onClick={(e)=>handleSelect(f.id, e.ctrlKey||e.metaKey)} className={`item-card rounded cursor-pointer relative overflow-hidden group ${viewMode==='grid'?'aspect-[3/4] flex flex-col bg-[#252525]':'flex items-center gap-3 p-2 border-b border-[#2a2a2a]'} ${selectedIds.has(f.id)?'selected':''}`}>
+                                    <div className={viewMode==='grid' ? "absolute top-2 left-2 z-20" : ""} onClick={(e)=>e.stopPropagation()}>
+                                        <input type="checkbox" checked={selectedIds.has(f.id)} onChange={()=>handleSelect(f.id, true)} className="w-5 h-5 accent-[#0067c0] cursor-pointer drop-shadow-md border border-white/20 rounded-sm"/>
+                                    </div>
                                     <div className={`${viewMode==='grid'?'flex-1 w-full':'w-12 h-12'} bg-black overflow-hidden relative`}>
                                         <img src={f.url} className="w-full h-full object-contain" draggable="false" loading="lazy" />
                                         {selectedIds.has(f.id) && <div className="absolute top-1 right-1 bg-[#0067c0] text-white rounded-full p-0.5"><Icon name="check" size={12}/></div>}
@@ -573,10 +593,13 @@
                             <h2 className="font-bold text-xs uppercase text-gray-500">Vista Previa</h2>
                             {isCropping ? <div className="flex gap-1"><button onClick={()=>setCropRatio(NaN)} className="fluent-btn fluent-btn-sm">Libre</button><button onClick={()=>setCropRatio(1)} className="fluent-btn fluent-btn-sm">1:1</button><button onClick={()=>setCropRatio(2/3)} className="fluent-btn fluent-btn-sm">2:3</button><button onClick={()=>setCropRatio(3/2)} className="fluent-btn fluent-btn-sm">3:2</button><button onClick={saveCrop} className="fluent-btn fluent-btn-sm bg-[#0067c0]">Guardar</button><button onClick={()=>setIsCropping(false)} className="text-xs text-gray-400 hover:text-white px-2">X</button></div> : <button onClick={()=>setIsCropping(true)} className="text-xs flex gap-1 items-center hover:text-white text-gray-400"><Icon name="crop" size={12}/> Recortar</button>}
                         </div>
+                        
+                        {/* IMAGEN PREVIEW RESIZABLE CON HANDLE */}
                         <div style={{height: previewHeight}} className="w-full bg-[#1a1a1a] border border-[#3e3e3e] flex items-center justify-center overflow-hidden relative checkerboard">
                             {isCropping ? <img ref={cropImgRef} src={activeFile.url} className="max-w-full block" /> : <img src={activeFile.url} className="w-full h-full object-contain" />}
                         </div>
                         <div className="resizer-h mt-1 mb-2" onMouseDown={()=>{isDraggingPreview.current=true;document.body.style.cursor='row-resize'}}><div className="grip"></div></div>
+                        
                         <div className="text-xs text-gray-400 text-center select-text">{activeFile.originalName}</div>
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
