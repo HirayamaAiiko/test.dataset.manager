@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LoRa Dataset Manager (Touch Ready)</title>
+    <title>LoRa Dataset Manager (Ultimate Edition)</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -257,6 +257,7 @@
             const [previewHeight, setPreviewHeight] = useState(350);
             const [viewMode, setViewMode] = useState('list');
             const [sortMode, setSortMode] = useState('name_asc');
+            const [filterStatus, setFilterStatus] = useState('all'); // NUEVO ESTADO PARA FILTRO CON/SIN TAGS
             
             const [filterText, setFilterText] = useState("");
             const [prefix, setPrefix] = useState("");
@@ -300,12 +301,21 @@
             }, [files]);
 
             const processedFiles = useMemo(() => {
-                let res = files.filter(f => f.newName.toLowerCase().includes(filterText.toLowerCase()) || f.tags.toLowerCase().includes(filterText.toLowerCase()));
+                let res = files.filter(f => {
+                    const matchesText = f.newName.toLowerCase().includes(filterText.toLowerCase()) || f.tags.toLowerCase().includes(filterText.toLowerCase());
+                    
+                    // LÓGICA DE FILTRADO CON/SIN TAGS
+                    let matchesStatus = true;
+                    if (filterStatus === 'tagged') matchesStatus = f.tagCount > 0;
+                    if (filterStatus === 'untagged') matchesStatus = f.tagCount === 0;
+
+                    return matchesText && matchesStatus;
+                });
                 if (sortMode === 'name_desc') res.sort((a,b)=>b.newName.localeCompare(a.newName));
                 else if (sortMode === 'tags_count') res.sort((a,b)=>b.tagCount-a.tagCount);
                 else res.sort((a,b)=>a.newName.localeCompare(b.newName));
                 return res;
-            }, [files, filterText, sortMode]);
+            }, [files, filterText, sortMode, filterStatus]);
             const visibleFiles = processedFiles.slice(0, visibleLimit);
 
             useEffect(() => {
@@ -346,14 +356,11 @@
                     const dy = clientY - lastMousePos.current.y;
                     lastMousePos.current = { x: clientX, y: clientY };
 
-                    if (isDraggingLeft.current) setSidebarWidth(w => Math.max(200, Math.min(600, w + dx))); // Logic simplified to use delta for touch support
-                    // Actually for absolute positioning (sidebar/editor), absolute position is better for mouse, but delta is universal.
-                    // Let's stick to absolute for sidebars (desktop) and delta for preview height.
+                    if (isDraggingLeft.current) setSidebarWidth(w => Math.max(200, Math.min(600, w + dx))); 
                     
                     if (isDraggingLeft.current) setSidebarWidth(Math.max(200, Math.min(600, clientX)));
                     if (isDraggingRight.current) setEditorWidth(Math.max(300, Math.min(800, window.innerWidth - clientX)));
                     
-                    // PREVIEW HEIGHT (Vertical) - Delta is best here
                     if (isDraggingPreview.current) setPreviewHeight(p => Math.max(150, Math.min(800, p + dy)));
                 };
 
@@ -552,9 +559,47 @@
             const addTag = () => { if (!activeId || !newTagInput.trim()) return; const current = activeFile.tags.split(',').map(t => t.trim()).filter(t => t); if (!current.includes(newTagInput.trim())) updateActiveTags([...current, newTagInput.trim()].join(', ')); setNewTagInput(""); };
             const removeTag = (tag) => { const current = activeFile.tags.split(',').map(t => t.trim()); updateActiveTags(current.filter(t => t !== tag).join(', ')); };
             const batchRename = () => { if (!prefix) return; const ids = new Set(getTargets().map(f => f.id)); let c = 1; updateFiles(f => ids.has(f.id) ? { ...f, newName: `${prefix}_${String(c++).padStart(3, '0')}` } : f); };
-            const addTrigger = () => { if (!triggerWord) return; const ids = new Set(getTargets().map(f => f.id)); updateFiles(f => ids.has(f.id) && !f.tags.includes(triggerWord) ? { ...f, tags: [triggerWord, ...f.tags.split(',')].join(', ') } : f); };
-            const deleteTag = () => { if (!tagToDelete) return; const ids = new Set(getTargets().map(f => f.id)); updateFiles(f => ids.has(f.id) ? { ...f, tags: f.tags.split(',').filter(t=>t.trim().toLowerCase() !== tagToDelete.toLowerCase()).join(', ') } : f); };
-            const searchRep = () => { if (!findText) return; const ids = new Set(getTargets().map(f => f.id)); updateFiles(f => ids.has(f.id) ? { ...f, tags: f.tags.split(',').map(t=>t.trim()===findText?replaceText:t.trim()).join(', ') } : f); };
+            
+            // --- FIX FOR TRIGGER WORD UPDATE & TAG COUNTS ---
+            const addTrigger = () => {
+                if (!triggerWord) return;
+                const ids = new Set(getTargets().map(f => f.id));
+                updateFiles(f => {
+                    if (ids.has(f.id)) {
+                        const tags = f.tags.split(',').map(t => t.trim()).filter(t => t);
+                        if (!tags.includes(triggerWord)) {
+                            const newTags = [triggerWord, ...tags];
+                            return { ...f, tags: newTags.join(', '), tagCount: newTags.length };
+                        }
+                    }
+                    return f;
+                });
+            };
+
+            const deleteTag = () => {
+                if (!tagToDelete) return;
+                const ids = new Set(getTargets().map(f => f.id));
+                updateFiles(f => {
+                    if (ids.has(f.id)) {
+                        const tags = f.tags.split(',').map(t => t.trim()).filter(t => t.toLowerCase() !== tagToDelete.toLowerCase());
+                        return { ...f, tags: tags.join(', '), tagCount: tags.length };
+                    }
+                    return f;
+                });
+            };
+            
+            const searchRep = () => {
+                if (!findText) return;
+                const ids = new Set(getTargets().map(f => f.id));
+                updateFiles(f => {
+                    if (ids.has(f.id)) {
+                        const tags = f.tags.split(',').map(t => t.trim() === findText ? replaceText : t.trim()).filter(t => t);
+                        return { ...f, tags: tags.join(', '), tagCount: tags.length };
+                    }
+                    return f;
+                });
+            };
+
             const deleteSelected = () => { const targets = getTargets(); if (!targets.length || !confirm(`¿Borrar ${targets.length} imágenes?`)) return; const ids = new Set(targets.map(f => f.id)); if (activeId && ids.has(activeId)) { setActiveId(null); setIsCropping(false); } setFiles(prev => prev.filter(f => !ids.has(f.id))); setSelectedIds(new Set()); };
             const dedupTags = () => { const ids = new Set(getTargets().map(f => f.id)); let changes = 0; const newF = files.map(f => { if (ids.has(f.id)) { const tags = f.tags.split(',').map(t=>t.trim()).filter(t=>t); const seen = new Set(); const unique = tags.filter(t => { const l = t.toLowerCase(); if(seen.has(l)) return false; seen.add(l); return true; }); if (unique.length !== tags.length) { changes++; return { ...f, tags: unique.join(', '), tagCount: unique.length }; } } return f; }); if (changes) { setFiles(newF); alert(`Corregidos ${changes} archivos.`); } else alert("Sin duplicados."); };
             
@@ -600,18 +645,19 @@
                         {isMobile && <button onClick={() => setShowMobileTools(true)} className="fluent-btn"><Icon name="menu"/></button>}
                         <Icon name="search" className="text-gray-400"/>
                         <input className="fluent-input bg-transparent border-none flex-1" placeholder="Filtrar..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
+                        
+                        {/* NUEVO FILTRO DE ESTADO DE TAGS */}
+                        <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
+                            <option value="all">Todos</option>
+                            <option value="tagged">Con Etiquetas</option>
+                            <option value="untagged">Sin Etiquetas</option>
+                        </select>
+                        
                         <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={sortMode} onChange={e=>setSortMode(e.target.value)}><option value="name_asc">A-Z</option><option value="name_desc">Z-A</option><option value="tags_count"># Tags</option></select>
                         <div className="flex bg-[#333] rounded p-0.5">
                             <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
                             <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
-                            <button 
-                                className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" 
-                                onClick={deleteSelected}
-                                title="Eliminar Seleccionados"
-                                disabled={selectedIds.size === 0}
-                            >
-                                <Icon name="trash" size={16}/>
-                            </button>
+                            <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Eliminar Seleccionados" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
                         </div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 min-h-0" onScroll={handleScroll}>
