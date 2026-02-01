@@ -354,6 +354,7 @@
 
             const handleScroll = (e) => { if (e.target.scrollHeight - e.target.scrollTop - e.target.clientHeight < 300) setVisibleLimit(prev => Math.min(prev + 40, files.length)); };
 
+            // --- UNIFIED DRAG HANDLER (Mouse & Touch) ---
             useEffect(() => {
                 const handleMove = (clientX, clientY) => {
                     const dx = clientX - lastMousePos.current.x;
@@ -498,106 +499,104 @@
                 setConsolidationModalOpen(false); alert(`Consolidadas ${changes.length} etiquetas.`);
             };
 
-            // --- EXPORTAR ---
             const openExport = () => {
                 if (files.length === 0) return;
-                // Precalcular nombre sugerido
                 let suggestedName = "Dataset";
-                if (triggerWord) {
-                    suggestedName = triggerWord + " Dataset v1";
-                } else if (allUniqueTags.length > 0) {
-                    suggestedName = allUniqueTags[0].tag + " Dataset v1";
-                }
-                
+                if (triggerWord) { suggestedName = triggerWord + " Dataset v1"; } 
+                else if (allUniqueTags.length > 0) { suggestedName = allUniqueTags[0].tag + " Dataset v1"; }
                 setExportOptions(prev => ({ ...prev, customName: suggestedName }));
                 setExportModalOpen(true);
             };
 
+            // --- EXPORTAR OPTIMIZADO PARA MÓVILES (CRASH FIX) ---
             const executeExport = async () => {
                 setIsExporting(true);
                 setExportProgress(0);
-                // No usamos setLoading global para mantener el modal abierto
                 
-                const zip = new JSZip();
-                const counts = {};
-                
-                if (exportOptions.stats) {
-                    const statsData = {
-                        total_files: files.length,
-                        unique_tags: allUniqueTags.length,
-                        top_tags: allUniqueTags.slice(0, 50),
-                        generated_at: new Date().toISOString()
-                    };
-                    zip.file("dataset_stats.json", JSON.stringify(statsData, null, 2));
-                }
-
-                if (exportOptions.buckets) {
-                    for (const f of files) {
-                        if (f.width === 0) {
-                            await new Promise(resolve => {
-                                const img = new Image(); img.src = f.url;
-                                img.onload = () => { f.width = img.naturalWidth; f.height = img.naturalHeight; resolve(); };
-                                img.onerror = resolve;
-                            });
-                        }
-                    }
-                }
-
-                for (let i = 0; i < files.length; i++) {
-                    const f = files[i];
-                    let n = f.newName;
-                    if(counts[n]) n = `${n}_${++counts[n]}`; else counts[n]=1;
+                try {
+                    const zip = new JSZip();
+                    const counts = {};
                     
-                    let folderPrefix = "";
-                    if (exportOptions.buckets && f.width > 0) {
-                        folderPrefix = `${f.width}x${f.height}/`;
+                    if (exportOptions.stats) {
+                        const statsData = {
+                            total_files: files.length,
+                            unique_tags: allUniqueTags.length,
+                            top_tags: allUniqueTags.slice(0, 50),
+                            generated_at: new Date().toISOString()
+                        };
+                        zip.file("dataset_stats.json", JSON.stringify(statsData, null, 2));
                     }
 
-                    if (exportOptions.images) {
-                        if (exportOptions.format === 'original') {
-                            zip.file(`${folderPrefix}${n}${f.extension}`, f.file);
-                        } else {
-                            const converted = await convertImage(f.url, exportOptions.format);
-                            if (converted) {
-                                zip.file(`${folderPrefix}${n}${converted.ext}`, converted.blob);
-                            } else {
-                                zip.file(`${folderPrefix}${n}${f.extension}`, f.file);
+                    if (exportOptions.buckets) {
+                        for (const f of files) {
+                            if (f.width === 0) {
+                                await new Promise(resolve => {
+                                    const img = new Image(); img.src = f.url;
+                                    img.onload = () => { f.width = img.naturalWidth; f.height = img.naturalHeight; resolve(); };
+                                    img.onerror = resolve;
+                                });
                             }
                         }
                     }
-                    if (exportOptions.text) zip.file(`${folderPrefix}${n}.txt`, f.tags);
-                    
-                    // Actualizar progreso
-                    setExportProgress(Math.round(((i + 1) / files.length) * 100));
-                    
-                    if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
-                }
 
-                const c = await zip.generateAsync({type:"blob"});
-                const a = document.createElement('a'); 
-                a.href = URL.createObjectURL(c); 
-                
-                // Usar nombre personalizado o fallback
-                let finalName = exportOptions.customName.trim() || "dataset";
-                if (!finalName.toLowerCase().endsWith(".zip")) finalName += ".zip";
-                
-                a.download = finalName; 
-                a.click();
-                
-                setIsExporting(false);
-                setExportModalOpen(false);
+                    // Bucle ralentizado para móviles (Throttling)
+                    for (let i = 0; i < files.length; i++) {
+                        const f = files[i];
+                        let n = f.newName;
+                        if(counts[n]) n = `${n}_${++counts[n]}`; else counts[n]=1;
+                        
+                        let folderPrefix = "";
+                        if (exportOptions.buckets && f.width > 0) {
+                            folderPrefix = `${f.width}x${f.height}/`;
+                        }
+
+                        if (exportOptions.images) {
+                            if (exportOptions.format === 'original') {
+                                zip.file(`${folderPrefix}${n}${f.extension}`, f.file);
+                            } else {
+                                const converted = await convertImage(f.url, exportOptions.format);
+                                if (converted) {
+                                    zip.file(`${folderPrefix}${n}${converted.ext}`, converted.blob);
+                                } else {
+                                    zip.file(`${folderPrefix}${n}${f.extension}`, f.file);
+                                }
+                            }
+                        }
+                        if (exportOptions.text) zip.file(`${folderPrefix}${n}.txt`, f.tags);
+                        
+                        setExportProgress(Math.round(((i + 1) / files.length) * 100));
+                        
+                        // Pausa más agresiva en móviles para Garbage Collector
+                        await new Promise(r => setTimeout(r, isMobile ? 50 : 0));
+                    }
+
+                    setLoadingMsg("Generando ZIP final...");
+                    const compressionMethod = isMobile ? "STORE" : "DEFLATE"; // STORE es rápido y usa poca RAM
+                    
+                    const c = await zip.generateAsync({
+                        type: "blob", 
+                        compression: compressionMethod
+                    });
+                    
+                    const a = document.createElement('a'); 
+                    a.href = URL.createObjectURL(c); 
+                    let finalName = exportOptions.customName.trim() || "dataset";
+                    if (!finalName.toLowerCase().endsWith(".zip")) finalName += ".zip";
+                    a.download = finalName; 
+                    a.click();
+                    
+                } catch (err) {
+                    alert("Error exportando (posible falta de memoria): " + err.message);
+                } finally {
+                    setIsExporting(false);
+                    setExportModalOpen(false);
+                }
             };
 
-            // --- CROP ---
             useEffect(() => {
-                if (isCropping && cropImgRef.current) {
-                    const cropper = new Cropper(cropImgRef.current, { viewMode: 1, dragMode: 'move', autoCropArea: 1, background: false, zoomable: true, scalable: true });
-                    setCropperInstance(cropper); return () => cropper.destroy();
-                }
+                if (isCropping && cropImgRef.current) { const cropper = new Cropper(cropImgRef.current, { viewMode: 1, dragMode: 'move', autoCropArea: 1, background: false, zoomable: true, scalable: true }); setCropperInstance(cropper); return () => cropper.destroy(); }
             }, [isCropping, activeId]); 
-            
-            const setCropRatio = (ratio) => cropperInstance && cropperInstance.setAspectRatio(ratio);
-            
+            const setCropRatio = (r) => cropperInstance && cropperInstance.setAspectRatio(r);
             const saveCrop = () => {
                 if (!cropperInstance || !activeFile) return;
                 cropperInstance.getCroppedCanvas().toBlob((blob) => {
@@ -607,46 +606,16 @@
                 });
             };
 
-            // --- HELPER LOGIC ---
             const activeFile = useMemo(() => files.find(f => f.id === activeId), [files, activeId]);
             const getTargets = () => selectedIds.size > 0 ? files.filter(f => selectedIds.has(f.id)) : files;
             const updateFiles = (updater) => setFiles(prev => prev.map(updater));
-
-            const updateActiveTags = (newTags) => {
-                if (!activeId) return;
-                const count = newTags.split(',').filter(t => t.trim()).length;
-                setFiles(prev => prev.map(f => f.id === activeId ? { ...f, tags: newTags, tagCount: count } : f));
-            };
-
-            const handleTagSort = () => {
-                if (!activeFile) return;
-                const tagsArray = activeFile.tags.split(',').map(t => t.trim()).filter(t => t);
-                const dragged = tagsArray[dragItem.current];
-                tagsArray.splice(dragItem.current, 1);
-                tagsArray.splice(dragOverItem.current, 0, dragged);
-                dragItem.current = null;
-                dragOverItem.current = null;
-                updateActiveTags(tagsArray.join(', '));
-            };
-
-            const addTag = () => {
-                if (!activeId || !newTagInput.trim()) return;
-                const current = activeFile.tags.split(',').map(t => t.trim()).filter(t => t);
-                if (!current.includes(newTagInput.trim())) updateActiveTags([...current, newTagInput.trim()].join(', '));
-                setNewTagInput("");
-            };
-            const removeTag = (tag) => {
-                const current = activeFile.tags.split(',').map(t => t.trim());
-                updateActiveTags(current.filter(t => t !== tag).join(', '));
-            };
-
-            // --- MASS ACTIONS ---
-            const batchRename = () => {
-                if (!prefix) return;
-                const ids = new Set(getTargets().map(f => f.id));
-                let c = 1;
-                updateFiles(f => ids.has(f.id) ? { ...f, newName: `${prefix}_${String(c++).padStart(3, '0')}` } : f);
-            };
+            const updateActiveTags = (newTags) => { if (!activeId) return; const count = newTags.split(',').filter(t => t.trim()).length; setFiles(prev => prev.map(f => f.id === activeId ? { ...f, tags: newTags, tagCount: count } : f)); };
+            const handleTagSort = () => { if (!activeFile) return; const tagsArray = activeFile.tags.split(',').map(t => t.trim()).filter(t => t); const dragged = tagsArray[dragItem.current]; tagsArray.splice(dragItem.current, 1); tagsArray.splice(dragOverItem.current, 0, dragged); dragItem.current = null; dragOverItem.current = null; updateActiveTags(tagsArray.join(', ')); };
+            const addTag = () => { if (!activeId || !newTagInput.trim()) return; const current = activeFile.tags.split(',').map(t => t.trim()).filter(t => t); if (!current.includes(newTagInput.trim())) updateActiveTags([...current, newTagInput.trim()].join(', ')); setNewTagInput(""); };
+            const removeTag = (tag) => { const current = activeFile.tags.split(',').map(t => t.trim()); updateActiveTags(current.filter(t => t !== tag).join(', ')); };
+            const batchRename = () => { if (!prefix) return; const ids = new Set(getTargets().map(f => f.id)); let c = 1; updateFiles(f => ids.has(f.id) ? { ...f, newName: `${prefix}_${String(c++).padStart(3, '0')}` } : f); };
+            
+            // --- FIX FOR TRIGGER WORD UPDATE & TAG COUNTS ---
             const addTrigger = () => {
                 if (!triggerWord) return;
                 const ids = new Set(getTargets().map(f => f.id));
