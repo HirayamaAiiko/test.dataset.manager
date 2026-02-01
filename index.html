@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LoRa Dataset Manager (Ultimate Edition)</title>
+    <title>LoRa Dataset Manager (Ultimate Edition + Persistence)</title>
     
     <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -140,6 +140,76 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef, Component, useCallback } = React;
 
+        // --- INDEXEDDB SERVICE ---
+        const DB_NAME = 'LoRaDatasetManagerDB';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'session';
+
+        const dbService = {
+            open: () => {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                        }
+                    };
+                    request.onsuccess = (event) => resolve(event.target.result);
+                    request.onerror = (event) => reject(event.target.error);
+                });
+            },
+            saveSession: async (files) => {
+                const db = await dbService.open();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    // Limpiar antes de guardar para evitar residuos
+                    store.clear();
+                    
+                    files.forEach(file => {
+                        // Guardamos solo lo necesario, el blob del file se guarda tal cual
+                        store.put({
+                            id: file.id,
+                            file: file.file, // Blob/File object
+                            originalName: file.originalName,
+                            newName: file.newName,
+                            extension: file.extension,
+                            tags: file.tags,
+                            tagCount: file.tagCount,
+                            hash: file.hash,
+                            width: file.width,
+                            height: file.height
+                        });
+                    });
+
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = (event) => reject(event.target.error);
+                });
+            },
+            loadSession: async () => {
+                const db = await dbService.open();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = (event) => reject(event.target.error);
+                });
+            },
+            clearSession: async () => {
+                const db = await dbService.open();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([STORE_NAME], 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    store.clear();
+                    transaction.oncomplete = () => resolve();
+                    transaction.onerror = (event) => reject(event.target.error);
+                });
+            }
+        };
+
+
         class ErrorBoundary extends Component {
             constructor(props) { super(props); this.state = { hasError: false }; }
             static getDerivedStateFromError() { return { hasError: true }; }
@@ -215,9 +285,53 @@
                 setHistory(curr => {
                     const newFiles = typeof newFilesOrUpdater === 'function' ? newFilesOrUpdater(curr.present) : newFilesOrUpdater;
                     const newPast = [...curr.past, curr.present].slice(-20);
+                    
+                    // AUTO-SAVE to IndexedDB logic (Debounced ideally, but here direct for simplicity)
+                    // We save on every state change that affects files.
+                    // To avoid performance hit on large datasets, we might want to debounce this in a real pro app,
+                    // but for <500 imgs it's fast.
+                    // dbService.saveSession(newFiles).catch(console.error); 
+                    // *Saving moved to useEffect to debounce*
+                    
                     return { past: newPast, present: newFiles, future: [] };
                 });
             };
+            
+            // --- AUTO-SAVE EFFECT ---
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    if (files.length > 0) {
+                        dbService.saveSession(files).catch(err => console.error("Auto-save failed", err));
+                    } else if (files.length === 0 && history.past.length > 0) {
+                         // If user cleared everything explicitly, maybe we should clear DB? 
+                         // Or keep it? Let's keep it safe. Only clear on explicit load new.
+                    }
+                }, 1000); // Save 1s after last change
+                return () => clearTimeout(timer);
+            }, [files]);
+
+            // --- RESTORE SESSION ON LOAD ---
+            useEffect(() => {
+                const checkSession = async () => {
+                    try {
+                        const savedFiles = await dbService.loadSession();
+                        if (savedFiles && savedFiles.length > 0) {
+                            if (confirm(`Se encontró una sesión anterior con ${savedFiles.length} archivos. ¿Deseas restaurarla?`)) {
+                                // Re-create blob URLs
+                                const revitalizedFiles = savedFiles.map(f => ({
+                                    ...f,
+                                    url: URL.createObjectURL(f.file)
+                                }));
+                                setHistory({ past: [], present: revitalizedFiles, future: [] });
+                            } else {
+                                dbService.clearSession();
+                            }
+                        }
+                    } catch (e) { console.error("Error checking session", e); }
+                };
+                checkSession();
+            }, []);
+
 
             const undo = useCallback(() => {
                 setHistory(curr => {
@@ -292,14 +406,7 @@
             const [typoModalOpen, setTypoModalOpen] = useState(false);
             const [typoCandidates, setTypoCandidates] = useState([]);
             const [exportModalOpen, setExportModalOpen] = useState(false);
-            const [exportOptions, setExportOptions] = useState({ 
-                buckets: false, 
-                images: true, 
-                text: true, 
-                stats: false, 
-                format: 'original',
-                customName: '' // Nuevo campo para el nombre personalizado
-            });
+            const [exportOptions, setExportOptions] = useState({ buckets: false, images: true, text: true, stats: false, format: 'original' });
             const [exportProgress, setExportProgress] = useState(0); // Nuevo estado para el progreso de exportación
             const [isExporting, setIsExporting] = useState(false); // Nuevo estado para saber si se está exportando
 
@@ -391,6 +498,10 @@
 
             const handleFolderSelect = async (e) => {
                 setLoading(true); setLoadingMsg("Cargando..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
+                
+                // Limpiar IndexedDB al cargar nueva carpeta
+                dbService.clearSession();
+
                 await new Promise(r => setTimeout(r, 100));
                 const fileList = Array.from(e.target.files);
                 const imageFiles = fileList.filter(f => f.name.match(/\.(jpg|jpeg|png|webp)$/i));
@@ -411,6 +522,10 @@
             const handleZipSelect = async (e) => {
                 const file = e.target.files[0]; if (!file) return;
                 setLoading(true); setLoadingMsg("Descomprimiendo ZIP..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
+                
+                // Limpiar IndexedDB al cargar nuevo ZIP
+                dbService.clearSession();
+
                 try {
                     const zip = await JSZip.loadAsync(file);
                     const newFilesData = []; const validExtensions = ['.png', '.jpg', '.jpeg', '.webp']; const imageEntries = []; const textMap = new Map();
