@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Dataset Studio | Aiiko Labs</title>
     
-    <!-- Favicon (Caja con Herramienta) -->
+    <!-- Favicon (Toolbox) -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='18' width='44' height='38' rx='4' fill='%230067c0'/%3E%3Cpath d='M10 24 L32 34 L54 24' stroke='white' stroke-width='3' fill='none'/%3E%3Cpath d='M32 34 V56' stroke='white' stroke-width='3'/%3E%3Cpath d='M42 6 L56 20 L42 34' stroke='%23fbbf24' stroke-width='4' stroke-linecap='round' fill='none' transform='rotate(-45 49 20)'/%3E%3C/svg%3E" type="image/svg+xml">
     <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='10' y='18' width='44' height='38' rx='4' fill='%230067c0'/%3E%3Cpath d='M10 24 L32 34 L54 24' stroke='white' stroke-width='3' fill='none'/%3E%3Cpath d='M32 34 V56' stroke='white' stroke-width='3'/%3E%3Cpath d='M42 6 L56 20 L42 34' stroke='%23fbbf24' stroke-width='4' stroke-linecap='round' fill='none' transform='rotate(-45 49 20)'/%3E%3C/svg%3E">
 
@@ -22,7 +22,7 @@
     <!-- JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
-    <!-- Iconos Lucide -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Cropper.js -->
@@ -30,7 +30,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
     <style>
-        /* FIX DE SCROLL: Estructura fija al 100% del viewport */
+        /* SCROLL FIX: Structure fixed at 100% viewport */
         html, body { 
             height: 100%; 
             width: 100%; 
@@ -43,7 +43,7 @@
         }
         #root { height: 100%; width: 100%; position: absolute; top: 0; left: 0; overflow: hidden; }
 
-        /* Scrollbars estilo Fluent */
+        /* Fluent Style Scrollbars */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #2c2c2c; }
         ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
@@ -80,6 +80,9 @@
         
         .fluent-btn-primary { background-color: #0067c0; border-color: #0067c0; }
         .fluent-btn-primary:hover:not(:disabled) { background-color: #1975c5; border-color: #1975c5; }
+
+        .fluent-btn-success { background-color: #1a3f1a; border-color: #2e5c2e; color: #88ff88; }
+        .fluent-btn-success:hover:not(:disabled) { background-color: #2e5c2e; }
 
         .fluent-btn-danger { background-color: #3f1a1a; border-color: #5c1e1e; color: #ff8888; }
         .fluent-btn-danger:hover:not(:disabled) { background-color: #5c1e1e; }
@@ -137,7 +140,6 @@
 
         .modal-overlay { background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 50; }
         
-        /* Animación suave para el título */
         .brand-title { cursor: pointer; transition: opacity 0.2s; }
         .brand-title:hover { opacity: 0.8; }
     </style>
@@ -218,7 +220,7 @@
             static getDerivedStateFromError() { return { hasError: true }; }
             componentDidCatch(error, info) { console.error("Crash:", error, info); }
             render() {
-                if (this.state.hasError) return <div className="h-full flex items-center justify-center text-red-400">⚠️ Error Crítico. <button onClick={()=>location.reload()} className="ml-2 underline">Recargar</button></div>;
+                if (this.state.hasError) return <div className="h-full flex items-center justify-center text-red-400">⚠️ Critical Error. <button onClick={()=>location.reload()} className="ml-2 underline">Reload</button></div>;
                 return this.props.children;
             }
         }
@@ -308,7 +310,7 @@
                     try {
                         const savedFiles = await dbService.loadSession();
                         if (savedFiles && savedFiles.length > 0) {
-                            if (confirm(`Se encontró una sesión anterior con ${savedFiles.length} archivos. ¿Deseas restaurarla?`)) {
+                            if (confirm(`Found previous session with ${savedFiles.length} files. Restore?`)) {
                                 const revitalizedFiles = savedFiles.map(f => ({ ...f, url: URL.createObjectURL(f.file) }));
                                 setHistory({ past: [], present: revitalizedFiles, future: [] });
                             } else {
@@ -350,7 +352,7 @@
             const [selectedIds, setSelectedIds] = useState(new Set());
             const [activeId, setActiveId] = useState(null);
             const [loading, setLoading] = useState(false);
-            const [loadingMsg, setLoadingMsg] = useState("Cargando...");
+            const [loadingMsg, setLoadingMsg] = useState("Loading...");
             const [visibleLimit, setVisibleLimit] = useState(40);
             
             const [sidebarWidth, setSidebarWidth] = useState(300);
@@ -381,6 +383,7 @@
             const dragOverItem = useRef();
             const gridContainerRef = useRef(null);
 
+            // Modals
             const [dupModalOpen, setDupModalOpen] = useState(false);
             const [dupGroups, setDupGroups] = useState([]); 
             const [dupChecking, setDupChecking] = useState(false);
@@ -396,9 +399,11 @@
             const [exportOptions, setExportOptions] = useState({ buckets: false, images: true, text: true, stats: false, format: 'original', customName: '' });
             const [exportProgress, setExportProgress] = useState(0); 
             const [isExporting, setIsExporting] = useState(false); 
-            
-            // --- NUEVO ESTADO PARA MODAL DE CRÉDITOS ---
             const [aboutModalOpen, setAboutModalOpen] = useState(false);
+
+            // NEW: Global Tag Manager Modal State
+            const [tagManagerOpen, setTagManagerOpen] = useState(false);
+            const [tagManagerData, setTagManagerData] = useState([]); // { id: 1, original: "tag", current: "tag", deleted: false, count: 5 }
 
             const allUniqueTags = useMemo(() => {
                 const counter = {}; files.forEach(f => f.tags.split(',').forEach(t => { const trimmed = t.trim(); if (trimmed) counter[trimmed] = (counter[trimmed] || 0) + 1; }));
@@ -485,8 +490,19 @@
                 document.body.style.cursor = type === 'preview' ? 'row-resize' : 'col-resize';
             };
 
+            const confirmSafeToLoad = () => {
+                if (files.length > 0) {
+                    return confirm("⚠️ WARNING: You are about to open a new dataset.\n\nYour current session (tags, renames, edits) will be LOST unless you have exported it.\n\nAre you sure you want to continue?");
+                }
+                return true;
+            };
+
             const handleFolderSelect = async (e) => {
-                setLoading(true); setLoadingMsg("Cargando..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
+                if (!confirmSafeToLoad()) {
+                    e.target.value = ""; // Reset input
+                    return;
+                }
+                setLoading(true); setLoadingMsg("Loading..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
                 dbService.clearSession();
                 await new Promise(r => setTimeout(r, 100));
                 const fileList = Array.from(e.target.files);
@@ -506,8 +522,12 @@
             };
 
             const handleZipSelect = async (e) => {
+                if (!confirmSafeToLoad()) {
+                    e.target.value = ""; // Reset input
+                    return;
+                }
                 const file = e.target.files[0]; if (!file) return;
-                setLoading(true); setLoadingMsg("Descomprimiendo ZIP..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
+                setLoading(true); setLoadingMsg("Unzipping..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
                 dbService.clearSession();
                 try {
                     const zip = await JSZip.loadAsync(file);
@@ -520,10 +540,10 @@
                         const txtPath = path.substring(0, path.lastIndexOf('.')) + ".txt"; let content = ""; const txtEntry = textMap.get(txtPath);
                         if (txtEntry) content = await txtEntry.async("string");
                         newFilesData.push({ id: Math.random().toString(36).substr(2, 9), file: new File([blob], fileName, { type: blob.type }), url: url, originalName: fileName, newName: baseName, extension: ext, tags: content, tagCount: content.split(',').filter(t => t.trim()).length, hash: null, width: 0, height: 0 });
-                        if (i % 20 === 0) { setLoadingMsg(`Procesando ${Math.round((i / imageEntries.length) * 100)}%`); await new Promise(r => setTimeout(r, 0)); }
+                        if (i % 20 === 0) { setLoadingMsg(`Processing ${Math.round((i / imageEntries.length) * 100)}%`); await new Promise(r => setTimeout(r, 0)); }
                     }
                     newFilesData.sort((a, b) => a.originalName.localeCompare(b.originalName)); setHistory({ past: [], present: newFilesData, future: [] }); setVisibleLimit(40); setLoading(false);
-                } catch (error) { console.error(error); alert("Error ZIP: " + error.message); setLoading(false); }
+                } catch (error) { console.error(error); alert("ZIP Error: " + error.message); setLoading(false); }
             };
 
             const analyzeBuckets = async () => {
@@ -554,7 +574,7 @@
                     if (group.length > 1) { groups.push(group); visited.add(fileA.id); }
                     setDupProgress(50 + Math.round(((i + 1) / currentFiles.length) * 50)); if (i % 5 === 0) await new Promise(r => setTimeout(r, 0));
                 }
-                setDupChecking(false); if (groups.length > 0) { setDupGroups(groups); setDupModalOpen(true); } else alert("¡Genial! No se encontraron duplicados.");
+                setDupChecking(false); if (groups.length > 0) { setDupGroups(groups); setDupModalOpen(true); } else alert("No duplicates found!");
             };
 
             const findTypos = () => {
@@ -567,7 +587,7 @@
                         if (dist > 0 && dist <= 2) { const likelyCorrect = t1.count >= t2.count ? t1 : t2; const likelyWrong = t1.count < t2.count ? t1 : t2; candidates.push({ correct: likelyCorrect, wrong: likelyWrong }); }
                     }
                 }
-                if (candidates.length > 0) { setTypoCandidates(candidates); setTypoModalOpen(true); } else alert("No se encontraron typos obvios.");
+                if (candidates.length > 0) { setTypoCandidates(candidates); setTypoModalOpen(true); } else alert("No obvious typos found.");
             };
 
             const fixTypo = (candidate) => {
@@ -594,7 +614,87 @@
                     const newTags = tags.map(t => { if (replaceMap[t]) { changed = true; return replaceMap[t]; } return t; });
                     if (changed) { const uniqueTags = [...new Set(newTags)]; return { ...f, tags: uniqueTags.join(', '), tagCount: uniqueTags.length }; } return f;
                 }));
-                setConsolidationModalOpen(false); alert(`Consolidadas ${changes.length} etiquetas.`);
+                setConsolidationModalOpen(false); alert(`Consolidated ${changes.length} tags.`);
+            };
+
+            // --- TAG MANAGER LOGIC ---
+            const openTagManager = () => {
+                if (files.length === 0) return;
+                // Prepare initial state based on current tags
+                const data = allUniqueTags.map(t => ({
+                    original: t.tag,
+                    current: t.tag,
+                    deleted: false,
+                    count: t.count
+                }));
+                setTagManagerData(data);
+                setTagManagerOpen(true);
+            };
+
+            const toggleTagDelete = (index) => {
+                setTagManagerData(prev => prev.map((item, i) => 
+                    i === index ? { ...item, deleted: !item.deleted } : item
+                ));
+            };
+
+            const editTagManagerTag = (index) => {
+                const item = tagManagerData[index];
+                const newName = prompt("Rename tag globally:", item.current);
+                if (newName !== null) {
+                    const trimmed = newName.trim();
+                    if (trimmed) {
+                        setTagManagerData(prev => prev.map((t, i) => 
+                            i === index ? { ...t, current: trimmed } : t
+                        ));
+                    }
+                }
+            };
+
+            const applyTagManagerChanges = () => {
+                const changes = tagManagerData.filter(t => t.deleted || t.original !== t.current);
+                if (changes.length === 0) {
+                    setTagManagerOpen(false);
+                    return;
+                }
+
+                if (!confirm(`Apply changes to ${changes.length} tags across the dataset? This cannot be easily undone.`)) return;
+
+                const deleteSet = new Set(tagManagerData.filter(t => t.deleted).map(t => t.original));
+                const renameMap = {};
+                tagManagerData.forEach(t => {
+                    if (!t.deleted && t.original !== t.current) {
+                        renameMap[t.original] = t.current;
+                    }
+                });
+
+                setFiles(prevFiles => prevFiles.map(f => {
+                    const fileTags = f.tags.split(',').map(t => t.trim()).filter(t => t);
+                    let fileChanged = false;
+
+                    const newTags = fileTags.reduce((acc, tag) => {
+                        if (deleteSet.has(tag)) {
+                            fileChanged = true;
+                            return acc; // Skip (delete)
+                        }
+                        if (renameMap[tag]) {
+                            fileChanged = true;
+                            acc.push(renameMap[tag]);
+                        } else {
+                            acc.push(tag);
+                        }
+                        return acc;
+                    }, []);
+
+                    if (fileChanged) {
+                        // Re-uniquify in case renames caused duplicates
+                        const uniqueTags = [...new Set(newTags)];
+                        return { ...f, tags: uniqueTags.join(', '), tagCount: uniqueTags.length };
+                    }
+                    return f;
+                }));
+
+                setTagManagerOpen(false);
+                alert("Tag changes applied successfully!");
             };
 
             const openExport = () => {
@@ -610,7 +710,7 @@
                 // SAFETY: Mobile protection
                 if (isMobile) {
                     if (files.length > 25) {
-                        alert("⚠️ Memoria Insuficiente en Móvil\n\nExportar más de 25 imágenes en ZIP puede colgar tu navegador.\n\nSe iniciará una descarga SECUENCIAL (uno por uno). Por favor permite las descargas múltiples.");
+                        alert("⚠️ Mobile Memory Warning\n\nExporting > 25 images as ZIP might crash your browser.\n\nStarting SEQUENTIAL download (one by one). Please allow multiple downloads.");
                         setIsExporting(true);
                         setExportProgress(0);
                         setExportModalOpen(false); 
@@ -629,10 +729,10 @@
                             await new Promise(r => setTimeout(r, 500));
                         }
                         setIsExporting(false);
-                        alert("Descarga secuencial finalizada.");
+                        alert("Sequential download finished.");
                         return;
                     } else {
-                        if (!confirm("⚠️ Advertencia de Memoria\n\n¿Estás seguro de generar un ZIP en móvil? Si tienes poca RAM podría fallar.")) return;
+                        if (!confirm("⚠️ Memory Warning\n\nAre you sure you want to generate a ZIP on mobile? Low RAM might cause crashes.")) return;
                     }
                 }
 
@@ -661,7 +761,7 @@
                     let finalName = exportOptions.customName.trim() || "dataset";
                     if (!finalName.toLowerCase().endsWith(".zip")) finalName += ".zip";
                     a.download = finalName; a.click();
-                } catch (err) { alert("Error exportando: " + err.message); } 
+                } catch (err) { alert("Export Error: " + err.message); } 
                 finally { setIsExporting(false); setExportModalOpen(false); }
             };
 
@@ -726,47 +826,48 @@
                 });
             };
 
-            const deleteSelected = () => { const targets = getTargets(); if (!targets.length || !confirm(`¿Borrar ${targets.length} imágenes?`)) return; const ids = new Set(targets.map(f => f.id)); if (activeId && ids.has(activeId)) { setActiveId(null); setIsCropping(false); } setFiles(prev => prev.filter(f => !ids.has(f.id))); setSelectedIds(new Set()); };
+            const deleteSelected = () => { const targets = getTargets(); if (!targets.length || !confirm(`Delete ${targets.length} images?`)) return; const ids = new Set(targets.map(f => f.id)); if (activeId && ids.has(activeId)) { setActiveId(null); setIsCropping(false); } setFiles(prev => prev.filter(f => !ids.has(f.id))); setSelectedIds(new Set()); };
             
             const clearAllTags = () => {
                 const targets = getTargets();
                 if (targets.length === 0) return;
-                if (!confirm(`¿Borrar todas las etiquetas de ${targets.length} imágenes?`)) return;
+                if (!confirm(`Clear ALL tags for ${targets.length} images? This is destructive.`)) return;
                 const ids = new Set(targets.map(f => f.id));
                 updateFiles(f => ids.has(f.id) ? { ...f, tags: '', tagCount: 0 } : f);
             };
 
-            const dedupTags = () => { const ids = new Set(getTargets().map(f => f.id)); let changes = 0; const newF = files.map(f => { if (ids.has(f.id)) { const tags = f.tags.split(',').map(t=>t.trim()).filter(t=>t); const seen = new Set(); const unique = tags.filter(t => { const l = t.toLowerCase(); if(seen.has(l)) return false; seen.add(l); return true; }); if (unique.length !== tags.length) { changes++; return { ...f, tags: unique.join(', '), tagCount: unique.length }; } } return f; }); if (changes) { setFiles(newF); alert(`Corregidos ${changes} archivos.`); } else alert("Sin duplicados."); };
+            const dedupTags = () => { const ids = new Set(getTargets().map(f => f.id)); let changes = 0; const newF = files.map(f => { if (ids.has(f.id)) { const tags = f.tags.split(',').map(t=>t.trim()).filter(t=>t); const seen = new Set(); const unique = tags.filter(t => { const l = t.toLowerCase(); if(seen.has(l)) return false; seen.add(l); return true; }); if (unique.length !== tags.length) { changes++; return { ...f, tags: unique.join(', '), tagCount: unique.length }; } } return f; }); if (changes) { setFiles(newF); alert(`Fixed ${changes} files.`); } else alert("No duplicates."); };
             
             const handleSelect = (id, multi) => { const newS = new Set(multi ? selectedIds : []); if (newS.has(id)) newS.delete(id); else newS.add(id); setSelectedIds(newS); if (!multi || newS.size === 1) { setActiveId(id); setIsCropping(false); } };
 
             const LeftPanelContent = (
                 <>
                     <div className="p-4 border-b border-[#3e3e3e] flex-shrink-0">
-                        {isMobile && <div className="flex justify-between items-center mb-4"><h1 className="font-bold text-lg text-white flex items-center gap-2 brand-title" onClick={() => setAboutModalOpen(true)}>Dataset Studio <span className="text-xs font-normal text-gray-400">| Aiiko Labs</span></h1><button onClick={() => setShowMobileTools(false)} className="fluent-btn">Cerrar</button></div>}
+                        {isMobile && <div className="flex justify-between items-center mb-4"><h1 className="font-bold text-lg text-white flex items-center gap-2 brand-title" onClick={() => setAboutModalOpen(true)}>Dataset Studio <span className="text-xs font-normal text-gray-400">| Aiiko Labs</span></h1><button onClick={() => setShowMobileTools(false)} className="fluent-btn">Close</button></div>}
                         {!isMobile && <h1 className="font-bold text-lg text-white mb-2 flex items-center gap-2 brand-title" onClick={() => setAboutModalOpen(true)}>Dataset Studio <span className="text-xs font-normal text-gray-400">| Aiiko Labs</span></h1>}
                         <div className="flex gap-2">
-                            <label className={`fluent-btn fluent-btn-primary flex-1 block text-center cursor-pointer ${loading ? 'opacity-50 pointer-events-none' : ''}`}>{loading ? "..." : "📂 Carpeta"}<input type="file" webkitdirectory="true" multiple className="hidden" onChange={handleFolderSelect} disabled={loading} /></label>
+                            <label className={`fluent-btn fluent-btn-primary flex-1 block text-center cursor-pointer ${loading ? 'opacity-50 pointer-events-none' : ''}`}>{loading ? "..." : "📂 Folder"}<input type="file" webkitdirectory="true" multiple className="hidden" onChange={handleFolderSelect} disabled={loading} /></label>
                             <label className={`fluent-btn flex-1 block text-center cursor-pointer ${loading ? 'opacity-50 pointer-events-none' : ''}`}>📦 ZIP<input type="file" accept=".zip" className="hidden" onChange={handleZipSelect} disabled={loading} /></label>
                         </div>
-                        <div className="text-xs text-gray-400 mt-2 text-center flex justify-between"><span>Total: {files.length}</span>{history.past.length > 0 && <span className="text-gray-500 font-bold" title="Ctrl+Z para deshacer">↩ Deshacer</span>}</div>
+                        <div className="text-xs text-gray-400 mt-2 text-center flex justify-between"><span>Total: {files.length}</span>{history.past.length > 0 && <span className="text-gray-500 font-bold" title="Ctrl+Z to undo">↩ Undo</span>}</div>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
-                        <div className="flex gap-2"><button onClick={()=>{setSelectedIds(new Set(files.map(f=>f.id)))}} className="fluent-btn flex-1">Todo</button><button onClick={()=>{setSelectedIds(new Set())}} className="fluent-btn flex-1">Nada</button></div>
+                        <div className="flex gap-2"><button onClick={()=>{setSelectedIds(new Set(files.map(f=>f.id)))}} className="fluent-btn flex-1">All</button><button onClick={()=>{setSelectedIds(new Set())}} className="fluent-btn flex-1">None</button></div>
                         <div className="space-y-2 pt-2 border-t border-[#3e3e3e]">
-                            <p className="text-xs font-bold text-gray-500 uppercase">Edición de Tags</p>
-                            <div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Renombrar archivos..." value={prefix} onChange={e=>setPrefix(e.target.value)} /><button onClick={batchRename} className="fluent-btn"><Icon name="edit-3" size={14}/></button></div>
+                            <p className="text-xs font-bold text-gray-500 uppercase">Tag Editing</p>
+                            <div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Rename files..." value={prefix} onChange={e=>setPrefix(e.target.value)} /><button onClick={batchRename} className="fluent-btn"><Icon name="edit-3" size={14}/></button></div>
                             <div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Trigger..." value={triggerWord} onChange={e=>setTriggerWord(e.target.value)} /><button onClick={addTrigger} className="fluent-btn"><Icon name="plus" size={14}/></button></div>
-                            <div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Borrar tag..." value={tagToDelete} onChange={e=>setTagToDelete(e.target.value)} /><button onClick={deleteTag} className="fluent-btn text-red-400"><Icon name="trash-2" size={14}/></button></div>
-                            <div className="space-y-2"><input className="fluent-input" placeholder="Buscar..." value={findText} onChange={e=>setFindText(e.target.value)}/><div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Reemplazo..." value={replaceText} onChange={e=>setReplaceText(e.target.value)} /><button onClick={searchRep} className="fluent-btn">OK</button></div></div>
-                            <button onClick={clearAllTags} className="fluent-btn w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 mt-1"><Icon name="eraser" size={14}/> Limpiar Etiquetas</button>
+                            <div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Delete tag..." value={tagToDelete} onChange={e=>setTagToDelete(e.target.value)} /><button onClick={deleteTag} className="fluent-btn text-red-400"><Icon name="trash-2" size={14}/></button></div>
+                            <div className="space-y-2"><input className="fluent-input" placeholder="Search..." value={findText} onChange={e=>setFindText(e.target.value)}/><div className="flex gap-2"><input className="fluent-input flex-1" placeholder="Replace..." value={replaceText} onChange={e=>setReplaceText(e.target.value)} /><button onClick={searchRep} className="fluent-btn">OK</button></div></div>
+                            <button onClick={clearAllTags} className="fluent-btn w-full justify-start gap-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 mt-1"><Icon name="eraser" size={14}/> Wipe All Tags</button>
                         </div>
                         <div className="space-y-2 pt-2 border-t border-[#3e3e3e]">
-                            <p className="text-xs font-bold text-gray-500 uppercase">Herramientas</p>
-                            <button onClick={findTypos} className="fluent-btn w-full justify-start gap-2 text-yellow-300 hover:text-yellow-100"><Icon name="search" size={14}/> 🔍 Detectar Typos</button>
+                            <p className="text-xs font-bold text-gray-500 uppercase">Tools</p>
+                            <button onClick={openTagManager} className="fluent-btn w-full justify-start gap-2 text-purple-300 hover:text-purple-100"><Icon name="tags" size={14}/> 🏷️ Global Tag Manager</button>
+                            <button onClick={findTypos} className="fluent-btn w-full justify-start gap-2 text-yellow-300 hover:text-yellow-100"><Icon name="search" size={14}/> 🔍 Detect Typos</button>
                             <button onClick={dedupTags} className="fluent-btn w-full justify-start gap-2"><Icon name="scissors" size={14}/> Dedup Tags</button>
-                            <button onClick={deleteSelected} className="fluent-btn fluent-btn-danger w-full justify-start gap-2"><Icon name="trash" size={14}/> Eliminar (Img+Txt)</button>
-                            <button onClick={openConsolidation} className="fluent-btn w-full justify-start gap-2 text-purple-300 hover:text-purple-100"><Icon name="puzzle" size={14}/> 🧩 Consolidar Tags</button>
+                            <button onClick={deleteSelected} className="fluent-btn fluent-btn-danger w-full justify-start gap-2"><Icon name="trash" size={14}/> Delete (Img+Txt)</button>
+                            <button onClick={openConsolidation} className="fluent-btn w-full justify-start gap-2 text-blue-300 hover:text-blue-100"><Icon name="puzzle" size={14}/> 🧩 Old Consolidator</button>
                             <button onClick={analyzeBuckets} className="fluent-btn w-full justify-start gap-2 text-blue-200 hover:text-blue-100"><Icon name="monitor" size={14}/> 📊 Buckets</button>
                             <div className="flex flex-col gap-1">
                                 <button onClick={findDuplicates} disabled={dupChecking} className="fluent-btn w-full justify-start gap-2 bg-[#4a3a1a] border-[#665522] text-[#ffdd88] hover:bg-[#665522]">
@@ -780,7 +881,7 @@
                             </div>
                         </div>
                     </div>
-                    <div className="p-4 border-t border-[#3e3e3e] flex-shrink-0"><button onClick={openExport} className="fluent-btn fluent-btn-primary w-full py-3 font-bold flex justify-center gap-2" disabled={!files.length}><Icon name="download"/> Exportar ZIP</button></div>
+                    <div className="p-4 border-t border-[#3e3e3e] flex-shrink-0"><button onClick={openExport} className="fluent-btn fluent-btn-primary w-full py-3 font-bold flex justify-center gap-2" disabled={!files.length}><Icon name="download"/> Export ZIP</button></div>
                 </>
             );
 
@@ -794,14 +895,14 @@
                                     <button onClick={() => setShowMobileTools(true)} className="fluent-btn flex-shrink-0"><Icon name="menu"/></button>
                                     <div className="flex-1 flex items-center bg-[#1e1e1e] border border-[#3e3e3e] rounded px-2">
                                         <Icon name="search" className="text-gray-400 flex-shrink-0"/>
-                                        <input className="fluent-input bg-transparent border-none flex-1 p-2" placeholder="Filtrar..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
+                                        <input className="fluent-input bg-transparent border-none flex-1 p-2" placeholder="Filter..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
                                     <select className="bg-[#333] text-white text-xs p-2 rounded border-none outline-none flex-shrink-0" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-                                        <option value="all">Todos</option>
-                                        <option value="tagged">Con Tags</option>
-                                        <option value="untagged">Sin Tags</option>
+                                        <option value="all">All</option>
+                                        <option value="tagged">Tagged</option>
+                                        <option value="untagged">Untagged</option>
                                     </select>
                                     <select className="bg-[#333] text-white text-xs p-2 rounded border-none outline-none flex-shrink-0" value={sortMode} onChange={e=>setSortMode(e.target.value)}>
                                         <option value="name_asc">A-Z</option>
@@ -811,7 +912,7 @@
                                     <div className="flex bg-[#333] rounded p-0.5 flex-shrink-0 ml-auto">
                                         <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
                                         <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
-                                        <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Eliminar Seleccionados" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
+                                        <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Delete Selected" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
                                     </div>
                                 </div>
                             </div>
@@ -819,11 +920,11 @@
                             // Desktop Layout: Row (Original)
                             <div className="flex items-center gap-2">
                                 <Icon name="search" className="text-gray-400"/>
-                                <input className="fluent-input bg-transparent border-none flex-1" placeholder="Filtrar..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
+                                <input className="fluent-input bg-transparent border-none flex-1" placeholder="Filter..." list="tag-suggestions" value={filterText} onChange={e=>setFilterText(e.target.value)}/>
                                 <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}>
-                                    <option value="all">Todos</option>
-                                    <option value="tagged">Con Etiquetas</option>
-                                    <option value="untagged">Sin Etiquetas</option>
+                                    <option value="all">All</option>
+                                    <option value="tagged">Tagged</option>
+                                    <option value="untagged">Untagged</option>
                                 </select>
                                 <select className="bg-[#333] text-white text-xs p-1 rounded border-none outline-none" value={sortMode} onChange={e=>setSortMode(e.target.value)}>
                                     <option value="name_asc">A-Z</option>
@@ -833,13 +934,13 @@
                                 <div className="flex bg-[#333] rounded p-0.5">
                                     <button className={`p-1.5 rounded ${viewMode==='list'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('list')}><Icon name="list" size={16}/></button>
                                     <button className={`p-1.5 rounded ${viewMode==='grid'?'bg-[#444] text-white':'text-gray-400'}`} onClick={()=>setViewMode('grid')}><Icon name="grid" size={16}/></button>
-                                    <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Eliminar Seleccionados" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
+                                    <button className="p-1.5 rounded text-red-400 hover:bg-red-900/30 hover:text-red-200 ml-1 border-l border-[#444]" onClick={deleteSelected} title="Delete Selected" disabled={selectedIds.size === 0}><Icon name="trash" size={16}/></button>
                                 </div>
                             </div>
                         )}
                     </div>
                     <div className="flex-1 overflow-y-auto p-2 min-h-0" onScroll={handleScroll}>
-                        {!files.length && !loading && <div className="h-full flex flex-col items-center justify-center text-gray-500"><Icon name="folder-open" size={48} className="mb-4 opacity-50"/><p>Sube una carpeta o ZIP</p></div>}
+                        {!files.length && !loading && <div className="h-full flex flex-col items-center justify-center text-gray-500"><Icon name="folder-open" size={48} className="mb-4 opacity-50"/><p>Upload a Folder or ZIP</p></div>}
                         {loading && <div className="h-full flex flex-col items-center justify-center text-blue-400 animate-pulse"><p className="font-bold">{loadingMsg}</p></div>}
                         <div ref={gridContainerRef} className={viewMode==='grid'?"grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2":"flex flex-col gap-1"}>
                             {visibleFiles.map(f => (
@@ -865,13 +966,13 @@
             const RightPanelContent = activeFile ? (
                 <>
                     <div className="p-4 border-b border-[#3e3e3e] bg-[#252525] flex-shrink-0">
-                        {isMobile && <div className="flex items-center mb-4"><button onClick={() => setActiveId(null)} className="fluent-btn w-full">⬅ Volver a la Galería</button></div>}
+                        {isMobile && <div className="flex items-center mb-4"><button onClick={() => setActiveId(null)} className="fluent-btn w-full">⬅ Back to Gallery</button></div>}
                         <div className="flex justify-between items-center mb-2">
-                            <h2 className="font-bold text-xs uppercase text-gray-500">Vista Previa</h2>
-                            {isCropping ? <div className="flex gap-1"><button onClick={()=>setCropRatio(NaN)} className="fluent-btn fluent-btn-sm">Libre</button><button onClick={()=>setCropRatio(1)} className="fluent-btn fluent-btn-sm">1:1</button><button onClick={()=>setCropRatio(2/3)} className="fluent-btn fluent-btn-sm">2:3</button><button onClick={()=>setCropRatio(3/2)} className="fluent-btn fluent-btn-sm">3:2</button><button onClick={saveCrop} className="fluent-btn fluent-btn-sm bg-[#0067c0]">Guardar</button><button onClick={()=>setIsCropping(false)} className="text-xs text-gray-400 hover:text-white px-2">X</button></div> : <button onClick={()=>setIsCropping(true)} className="text-xs flex gap-1 items-center hover:text-white text-gray-400"><Icon name="crop" size={12}/> Recortar</button>}
+                            <h2 className="font-bold text-xs uppercase text-gray-500">Preview</h2>
+                            {isCropping ? <div className="flex gap-1"><button onClick={()=>setCropRatio(NaN)} className="fluent-btn fluent-btn-sm">Free</button><button onClick={()=>setCropRatio(1)} className="fluent-btn fluent-btn-sm">1:1</button><button onClick={()=>setCropRatio(2/3)} className="fluent-btn fluent-btn-sm">2:3</button><button onClick={()=>setCropRatio(3/2)} className="fluent-btn fluent-btn-sm">3:2</button><button onClick={saveCrop} className="fluent-btn fluent-btn-sm bg-[#0067c0]">Save</button><button onClick={()=>setIsCropping(false)} className="text-xs text-gray-400 hover:text-white px-2">X</button></div> : <button onClick={()=>setIsCropping(true)} className="text-xs flex gap-1 items-center hover:text-white text-gray-400"><Icon name="crop" size={12}/> Crop</button>}
                         </div>
                         
-                        {/* IMAGEN PREVIEW RESIZABLE CON HANDLE */}
+                        {/* RESIZABLE PREVIEW */}
                         <div style={{height: previewHeight}} className="w-full bg-[#1a1a1a] border border-[#3e3e3e] flex items-center justify-center overflow-hidden relative checkerboard">
                             {isCropping ? <img ref={cropImgRef} src={activeFile.url} className="max-w-full block" /> : <img src={activeFile.url} className="w-full h-full object-contain" />}
                         </div>
@@ -880,10 +981,10 @@
                         <div className="text-xs text-gray-400 text-center select-text">{activeFile.originalName}</div>
                     </div>
                     <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 min-h-0">
-                        <div><label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Nombre</label><input className="fluent-input" value={activeFile.newName} onChange={e=>updateFiles(f=>f.id===activeId?{...f,newName:e.target.value}:f)} /></div>
+                        <div><label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Filename</label><input className="fluent-input" value={activeFile.newName} onChange={e=>updateFiles(f=>f.id===activeId?{...f,newName:e.target.value}:f)} /></div>
                         <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Etiquetas (Arrastrables)</label>
-                            <div className="flex gap-2 mb-2"><input className="fluent-input flex-1" placeholder="Añadir..." list="tag-suggestions" value={newTagInput} onChange={e=>setNewTagInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addTag()}/><button onClick={addTag} className="fluent-btn text-lg leading-none">+</button></div>
+                            <label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Tags (Draggable)</label>
+                            <div className="flex gap-2 mb-2"><input className="fluent-input flex-1" placeholder="Add tag..." list="tag-suggestions" value={newTagInput} onChange={e=>setNewTagInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addTag()}/><button onClick={addTag} className="fluent-btn text-lg leading-none">+</button></div>
                             <div className="flex flex-wrap gap-1 bg-[#1a1a1a] p-2 rounded min-h-[60px] content-start">
                                 {activeFile.tags.split(',').map(t=>t.trim()).filter(t=>t).map((tag, i)=>(<span key={i} className="bg-[#3a3a3a] border border-[#555] text-white text-xs px-2 py-1 rounded flex items-center gap-1 group hover:border-[#0067c0] tag-draggable" draggable onDragStart={()=>dragItem.current=i} onDragEnter={()=>dragOverItem.current=i} onDragEnd={handleTagSort} onDragOver={e=>e.preventDefault()}>{tag}<button onClick={()=>removeTag(tag)} className="hover:text-red-300 opacity-50 group-hover:opacity-100 ml-1">×</button></span>))}
                             </div>
@@ -891,7 +992,7 @@
                         <div><label className="text-xs font-bold text-gray-400 uppercase mb-1 block">Raw Text</label><textarea className="fluent-input h-32 font-mono text-xs" value={activeFile.tags} onChange={e=>updateActiveTags(e.target.value)}></textarea></div>
                     </div>
                 </>
-            ) : <div className="flex-1 flex flex-col items-center justify-center text-gray-500 p-8 text-center"><Icon name="mouse-pointer-2" size={32} className="mb-2 opacity-50"/><p>Selecciona una imagen</p></div>;
+            ) : <div className="flex-1 flex flex-col items-center justify-center text-gray-500 p-8 text-center"><Icon name="mouse-pointer-2" size={32} className="mb-2 opacity-50"/><p>Select an image</p></div>;
 
             return (
                 <div className="flex h-full w-full overflow-hidden text-sm select-none">
@@ -909,46 +1010,94 @@
                             <div className="bg-[#2c2c2c] border-l border-[#3e3e3e] flex flex-col h-full overflow-hidden" style={{ width: editorWidth }}>{RightPanelContent}</div>
                         </>
                     )}
-                    {/* Modales (mismo código que antes) */}
+                    
+                    {/* --- GLOBAL TAG MANAGER MODAL --- */}
+                    {tagManagerOpen && (
+                        <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
+                            <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl w-full max-w-6xl flex flex-col h-[85vh]">
+                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg">
+                                    <div>
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="tags" /> Global Tag Manager</h2>
+                                        <p className="text-xs text-gray-400">Double click chip to rename. Click X to delete. Click Apply to save.</p>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={applyTagManagerChanges} className="fluent-btn fluent-btn-success font-bold"><Icon name="save" size={16}/> Apply Changes</button>
+                                        <button onClick={() => setTagManagerOpen(false)} className="fluent-btn">Cancel</button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-4">
+                                    <div className="flex flex-wrap gap-2 content-start">
+                                        {tagManagerData.map((item, index) => {
+                                            if (item.deleted) {
+                                                 return (
+                                                    <span key={index} className="bg-[#3f1a1a] border border-[#5c1e1e] text-red-400 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 opacity-60">
+                                                        <span className="line-through">{item.original}</span>
+                                                        <button onClick={() => toggleTagDelete(index)} className="hover:text-white" title="Restore">↩</button>
+                                                    </span>
+                                                 );
+                                            }
+                                            const isModified = item.original !== item.current;
+                                            return (
+                                                <span 
+                                                    key={index} 
+                                                    className={`${isModified ? 'bg-[#1a2e3f] border-[#0067c0] text-blue-200' : 'bg-[#333] border-[#555] text-white'} border text-xs px-3 py-1.5 rounded-full flex items-center gap-2 group hover:border-gray-400 transition-colors select-none`}
+                                                    onDoubleClick={() => editTagManagerTag(index)}
+                                                    title="Double click to rename"
+                                                >
+                                                    <span>{item.current}</span>
+                                                    <span className="bg-black/30 px-1.5 rounded text-[10px] text-gray-400">{item.count}</span>
+                                                    <button onClick={(e) => { e.stopPropagation(); toggleTagDelete(index); }} className="hover:text-red-400 ml-1 text-gray-500 font-bold">×</button>
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* DUP MODAL */}
                     {dupModalOpen && dupGroups.length > 0 && (
                         <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
                             <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col">
-                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="copy" /> Conflictos: {dupGroups.length} grupos</h2><button onClick={() => setDupModalOpen(false)} className="fluent-btn">Cerrar</button></div>
-                                <div className="flex-1 overflow-y-auto p-4 space-y-6">{dupGroups.map((group, gIdx) => (<div key={gIdx} className="bg-[#1a1a1a] p-4 rounded border border-[#333]"><div className="flex gap-4 overflow-x-auto pb-2">{group.map(file => (<div key={file.id} className="flex-1 min-w-[200px] bg-[#252525] p-3 rounded border border-[#333] flex flex-col gap-2"><div className="h-40 bg-black flex items-center justify-center rounded overflow-hidden"><img src={file.url} className="max-w-full max-h-full object-contain" /></div><div className="text-xs space-y-1"><div className="font-bold text-white truncate">{file.originalName}</div><div className="text-gray-400">{file.width}x{file.height}</div></div><button onClick={() => resolveDuplicate(file)} className="fluent-btn fluent-btn-danger w-full mt-auto"><Icon name="trash" size={14}/> Eliminar</button></div>))}</div></div>))}</div>
+                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="copy" /> Conflicts: {dupGroups.length} groups</h2><button onClick={() => setDupModalOpen(false)} className="fluent-btn">Close</button></div>
+                                <div className="flex-1 overflow-y-auto p-4 space-y-6">{dupGroups.map((group, gIdx) => (<div key={gIdx} className="bg-[#1a1a1a] p-4 rounded border border-[#333]"><div className="flex gap-4 overflow-x-auto pb-2">{group.map(file => (<div key={file.id} className="flex-1 min-w-[200px] bg-[#252525] p-3 rounded border border-[#333] flex flex-col gap-2"><div className="h-40 bg-black flex items-center justify-center rounded overflow-hidden"><img src={file.url} className="max-w-full max-h-full object-contain" /></div><div className="text-xs space-y-1"><div className="font-bold text-white truncate">{file.originalName}</div><div className="text-gray-400">{file.width}x{file.height}</div></div><button onClick={() => resolveDuplicate(file)} className="fluent-btn fluent-btn-danger w-full mt-auto"><Icon name="trash" size={14}/> Delete</button></div>))}</div></div>))}</div>
                             </div>
                         </div>
                     )}
+                    {/* TYPO MODAL */}
                     {typoModalOpen && (
                         <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
                             <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl w-full max-w-3xl flex flex-col max-h-[80vh]">
-                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="search" /> Posibles Errores ({typoCandidates.length})</h2><button onClick={() => setTypoModalOpen(false)} className="fluent-btn">Cerrar</button></div>
-                                <div className="flex-1 overflow-y-auto p-4 space-y-3">{typoCandidates.map((c, i) => (<div key={i} className="flex items-center justify-between bg-[#333] p-3 rounded border border-[#444]"><div className="flex items-center gap-4"><div className="text-right"><div className="text-red-400 font-bold strike">{c.wrong.tag}</div><div className="text-xs text-gray-500">({c.wrong.count} usos)</div></div><Icon name="arrow-right" className="text-gray-500" /><div><div className="text-green-400 font-bold">{c.correct.tag}</div><div className="text-xs text-gray-500">({c.correct.count} usos)</div></div></div><button onClick={() => fixTypo(c)} className="fluent-btn fluent-btn-primary">Corregir</button></div>))}</div>
+                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="search" /> Potential Typos ({typoCandidates.length})</h2><button onClick={() => setTypoModalOpen(false)} className="fluent-btn">Close</button></div>
+                                <div className="flex-1 overflow-y-auto p-4 space-y-3">{typoCandidates.map((c, i) => (<div key={i} className="flex items-center justify-between bg-[#333] p-3 rounded border border-[#444]"><div className="flex items-center gap-4"><div className="text-right"><div className="text-red-400 font-bold strike">{c.wrong.tag}</div><div className="text-xs text-gray-500">({c.wrong.count} uses)</div></div><Icon name="arrow-right" className="text-gray-500" /><div><div className="text-green-400 font-bold">{c.correct.tag}</div><div className="text-xs text-gray-500">({c.correct.count} uses)</div></div></div><button onClick={() => fixTypo(c)} className="fluent-btn fluent-btn-primary">Fix</button></div>))}</div>
                             </div>
                         </div>
                     )}
+                    {/* EXPORT MODAL */}
                     {exportModalOpen && (
                         <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
                             <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl w-full max-w-md p-6">
-                                <h2 className="text-xl font-bold text-white mb-4">Opciones de Exportación</h2>
+                                <h2 className="text-xl font-bold text-white mb-4">Export Options</h2>
                                 <div className="space-y-4 mb-6">
                                     <div className="bg-[#333] p-3 rounded">
-                                        <div className="text-xs text-gray-400 font-bold uppercase mb-2">Nombre del Archivo</div>
+                                        <div className="text-xs text-gray-400 font-bold uppercase mb-2">Filename</div>
                                         <input 
                                             className="fluent-input w-full" 
-                                            placeholder="Nombre del ZIP..." 
+                                            placeholder="ZIP Name..." 
                                             value={exportOptions.customName} 
                                             onChange={e => setExportOptions({...exportOptions, customName: e.target.value})}
                                         />
                                     </div>
-                                    <div className="bg-[#333] p-3 rounded"><div className="text-xs text-gray-400 font-bold uppercase mb-2">Formato de Imagen</div><div className="flex gap-2">{['original', 'png', 'jpeg'].map(fmt => (<button key={fmt} onClick={() => setExportOptions({...exportOptions, format: fmt})} className={`flex-1 py-1.5 rounded text-xs capitalize border ${exportOptions.format === fmt ? 'bg-[#0067c0] border-[#0067c0] text-white' : 'bg-[#2a2a2a] border-[#444] text-gray-400 hover:border-gray-500'}`}>{fmt}</button>))}</div></div>
-                                    <label className="flex items-center gap-3 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.buckets} onChange={e=>setExportOptions({...exportOptions, buckets: e.target.checked})} className="w-5 h-5"/><div><div className="font-bold text-white">Organizar por Buckets</div><div className="text-xs text-gray-400">Crea carpetas por resolución</div></div></label>
-                                    <label className="flex items-center gap-3 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.stats} onChange={e=>setExportOptions({...exportOptions, stats: e.target.checked})} className="w-5 h-5"/><div><div className="font-bold text-white">Incluir Reporte JSON</div><div className="text-xs text-gray-400">Archivo con estadísticas</div></div></label>
-                                    <div className="flex gap-2"><label className="flex-1 flex items-center gap-2 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.images} onChange={e=>setExportOptions({...exportOptions, images: e.target.checked})} className="w-4 h-4"/> <span className="text-white">Imágenes</span></label><label className="flex-1 flex items-center gap-2 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.text} onChange={e=>setExportOptions({...exportOptions, text: e.target.checked})} className="w-4 h-4"/> <span className="text-white">Textos</span></label></div>
+                                    <div className="bg-[#333] p-3 rounded"><div className="text-xs text-gray-400 font-bold uppercase mb-2">Image Format</div><div className="flex gap-2">{['original', 'png', 'jpeg'].map(fmt => (<button key={fmt} onClick={() => setExportOptions({...exportOptions, format: fmt})} className={`flex-1 py-1.5 rounded text-xs capitalize border ${exportOptions.format === fmt ? 'bg-[#0067c0] border-[#0067c0] text-white' : 'bg-[#2a2a2a] border-[#444] text-gray-400 hover:border-gray-500'}`}>{fmt}</button>))}</div></div>
+                                    <label className="flex items-center gap-3 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.buckets} onChange={e=>setExportOptions({...exportOptions, buckets: e.target.checked})} className="w-5 h-5"/><div><div className="font-bold text-white">Organize by Buckets</div><div className="text-xs text-gray-400">Folders by resolution</div></div></label>
+                                    <label className="flex items-center gap-3 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.stats} onChange={e=>setExportOptions({...exportOptions, stats: e.target.checked})} className="w-5 h-5"/><div><div className="font-bold text-white">Include JSON Report</div><div className="text-xs text-gray-400">Statistics file</div></div></label>
+                                    <div className="flex gap-2"><label className="flex-1 flex items-center gap-2 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.images} onChange={e=>setExportOptions({...exportOptions, images: e.target.checked})} className="w-4 h-4"/> <span className="text-white">Images</span></label><label className="flex-1 flex items-center gap-2 p-3 bg-[#333] rounded cursor-pointer hover:bg-[#3a3a3a]"><input type="checkbox" checked={exportOptions.text} onChange={e=>setExportOptions({...exportOptions, text: e.target.checked})} className="w-4 h-4"/> <span className="text-white">Text files</span></label></div>
                                     
                                     {isExporting && (
                                         <div className="mt-4">
                                             <div className="flex justify-between text-xs text-gray-400 mb-1">
-                                                <span>Exportando...</span>
+                                                <span>Exporting...</span>
                                                 <span>{exportProgress}%</span>
                                             </div>
                                             <div className="w-full h-2 bg-[#222] rounded-full overflow-hidden">
@@ -958,30 +1107,32 @@
                                     )}
                                 </div>
                                 <div className="flex gap-2 justify-end">
-                                    <button onClick={() => setExportModalOpen(false)} className="fluent-btn" disabled={isExporting}>Cancelar</button>
-                                    <button onClick={executeExport} className="fluent-btn fluent-btn-primary px-6" disabled={isExporting}>{isExporting ? 'Procesando...' : 'Descargar ZIP'}</button>
+                                    <button onClick={() => setExportModalOpen(false)} className="fluent-btn" disabled={isExporting}>Cancel</button>
+                                    <button onClick={executeExport} className="fluent-btn fluent-btn-primary px-6" disabled={isExporting}>{isExporting ? 'Processing...' : 'Download ZIP'}</button>
                                 </div>
                             </div>
                         </div>
                     )}
+                    {/* BUCKET MODAL */}
                     {bucketModalOpen && (
                         <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
                             <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl w-full max-w-3xl flex flex-col max-h-[80vh]">
-                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="monitor" /> Resoluciones</h2><button onClick={() => setBucketModalOpen(false)} className="fluent-btn">Cerrar</button></div>
+                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="monitor" /> Resolutions</h2><button onClick={() => setBucketModalOpen(false)} className="fluent-btn">Close</button></div>
                                 <div className="flex-1 overflow-y-auto p-4 space-y-2">{Object.entries(buckets).sort((a,b)=>b[1]-a[1]).map(([res, c]) => (<div key={res} className="flex items-center gap-4 text-sm"><div className="w-24 font-mono text-gray-300 text-right">{res}</div><div className="flex-1 bg-[#333] h-6 rounded overflow-hidden relative"><div className="bg-[#0067c0] h-full" style={{width: `${(c/files.length)*100}%`}}></div><span className="absolute inset-0 flex items-center pl-2 text-xs text-white">{c} img ({((c/files.length)*100).toFixed(1)}%)</span></div></div>))}</div>
                             </div>
                         </div>
                     )}
+                    {/* OLD CONSOLIDATION MODAL */}
                     {consolidationModalOpen && (
                         <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
                             <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl w-full max-w-4xl flex flex-col max-h-[85vh]">
-                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><div><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="puzzle" /> Consolidación</h2></div><div className="flex gap-2"><button onClick={applyConsolidation} className="fluent-btn fluent-btn-primary">Guardar</button><button onClick={() => setConsolidationModalOpen(false)} className="fluent-btn">Cancelar</button></div></div>
+                                <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg"><div><h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="puzzle" /> Consolidation</h2></div><div className="flex gap-2"><button onClick={applyConsolidation} className="fluent-btn fluent-btn-primary">Save</button><button onClick={() => setConsolidationModalOpen(false)} className="fluent-btn">Cancel</button></div></div>
                                 <div className="flex-1 overflow-y-auto p-4"><div className="grid grid-cols-2 md:grid-cols-3 gap-3">{tagStats.map(({ tag, count }) => (<div key={tag} className="bg-[#333] p-2 rounded flex flex-col gap-1 border border-[#444]"><div className="flex justify-between text-xs text-gray-400 mb-1"><span>Original: {tag}</span><span className="bg-[#222] px-1.5 rounded">{count}</span></div><input className="fluent-input text-xs" defaultValue={tag} onChange={(e) => handleTagEditChange(tag, e.target.value)}/></div>))}</div></div>
                             </div>
                         </div>
                     )}
                     
-                    {/* MODAL CRÉDITOS */}
+                    {/* ABOUT MODAL */}
                     {aboutModalOpen && (
                         <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8" onClick={() => setAboutModalOpen(false)}>
                             <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl p-6 w-full max-w-sm text-center relative" onClick={e => e.stopPropagation()}>
@@ -994,11 +1145,11 @@
                                 <h2 className="text-2xl font-bold text-white mb-1">Dataset Studio</h2>
                                 <p className="text-sm text-[#0067c0] font-bold mb-4">Aiiko Labs</p>
                                 <div className="text-gray-400 text-sm space-y-2 mb-6">
-                                    <p>Versión 2.5 (Ultimate Edition)</p>
-                                    <p>Herramienta profesional para la gestión y curaduría de datasets de imágenes para entrenamiento LoRa/SD.</p>
+                                    <p>Version 2.6 (Global Edition)</p>
+                                    <p>Professional tool for LoRa/SD dataset curation and management.</p>
                                 </div>
                                 <div className="border-t border-[#444] pt-4">
-                                    <p className="text-xs text-gray-500">Desarrollado por</p>
+                                    <p className="text-xs text-gray-500">Developed by</p>
                                     <p className="text-white font-bold">Hirayama Aiiko</p>
                                 </div>
                             </div>
