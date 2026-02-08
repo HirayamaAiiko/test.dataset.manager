@@ -138,7 +138,7 @@
         .tag-draggable { cursor: grab; transition: transform 0.2s, box-shadow 0.2s; }
         .tag-draggable:active { cursor: grabbing; box-shadow: 0 5px 10px rgba(0,0,0,0.3); transform: scale(1.05); z-index: 50; }
 
-        .modal-overlay { background-color: rgba(0,0,0,0.8); backdrop-filter: blur(4px); z-index: 50; }
+        .modal-overlay { background-color: rgba(0,0,0,0.85); backdrop-filter: blur(4px); z-index: 50; }
         
         .brand-title { cursor: pointer; transition: opacity 0.2s; }
         .brand-title:hover { opacity: 0.8; }
@@ -383,6 +383,12 @@
             const dragOverItem = useRef();
             const gridContainerRef = useRef(null);
 
+            // Refs for file inputs to trigger them programmatically
+            const folderInputRef = useRef(null);
+            const zipInputRef = useRef(null);
+            // State for custom Load Warning Modal
+            const [confirmLoadModal, setConfirmLoadModal] = useState({ open: false, type: null }); // type: 'folder' | 'zip'
+
             // Modals
             const [dupModalOpen, setDupModalOpen] = useState(false);
             const [dupGroups, setDupGroups] = useState([]); 
@@ -401,9 +407,11 @@
             const [isExporting, setIsExporting] = useState(false); 
             const [aboutModalOpen, setAboutModalOpen] = useState(false);
 
-            // NEW: Global Tag Manager Modal State
+            // Global Tag Manager Modal State
             const [tagManagerOpen, setTagManagerOpen] = useState(false);
             const [tagManagerData, setTagManagerData] = useState([]); // { id: 1, original: "tag", current: "tag", deleted: false, count: 5 }
+            const [tagManagerSearch, setTagManagerSearch] = useState("");
+            const [tagEditModal, setTagEditModal] = useState({ open: false, index: -1, value: "" });
 
             const allUniqueTags = useMemo(() => {
                 const counter = {}; files.forEach(f => f.tags.split(',').forEach(t => { const trimmed = t.trim(); if (trimmed) counter[trimmed] = (counter[trimmed] || 0) + 1; }));
@@ -490,22 +498,36 @@
                 document.body.style.cursor = type === 'preview' ? 'row-resize' : 'col-resize';
             };
 
-            const confirmSafeToLoad = () => {
+            // --- Custom File Loading Logic ---
+            const requestLoadFile = (type) => {
                 if (files.length > 0) {
-                    return confirm("⚠️ WARNING: You are about to open a new dataset.\n\nYour current session (tags, renames, edits) will be LOST unless you have exported it.\n\nAre you sure you want to continue?");
+                    // Show custom modal instead of window.confirm
+                    setConfirmLoadModal({ open: true, type });
+                } else {
+                    // Direct trigger
+                    triggerFileSelector(type);
                 }
-                return true;
+            };
+
+            const triggerFileSelector = (type) => {
+                if (type === 'folder' && folderInputRef.current) folderInputRef.current.click();
+                if (type === 'zip' && zipInputRef.current) zipInputRef.current.click();
+            };
+
+            const handleConfirmLoad = () => {
+                const type = confirmLoadModal.type;
+                setConfirmLoadModal({ open: false, type: null });
+                triggerFileSelector(type);
             };
 
             const handleFolderSelect = async (e) => {
-                if (!confirmSafeToLoad()) {
-                    e.target.value = ""; // Reset input
-                    return;
-                }
                 setLoading(true); setLoadingMsg("Loading..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
                 dbService.clearSession();
                 await new Promise(r => setTimeout(r, 100));
                 const fileList = Array.from(e.target.files);
+                // Clear input value so same files can be selected again
+                e.target.value = ""; 
+
                 const imageFiles = fileList.filter(f => f.name.match(/\.(jpg|jpeg|png|webp)$/i));
                 const textFiles = fileList.filter(f => f.name.endsWith('.txt'));
                 const txtMap = new Map(); textFiles.forEach(f => txtMap.set(f.name, f));
@@ -522,11 +544,11 @@
             };
 
             const handleZipSelect = async (e) => {
-                if (!confirmSafeToLoad()) {
-                    e.target.value = ""; // Reset input
-                    return;
-                }
-                const file = e.target.files[0]; if (!file) return;
+                const file = e.target.files[0]; 
+                // Clear input value
+                e.target.value = "";
+                if (!file) return;
+
                 setLoading(true); setLoadingMsg("Unzipping..."); setHistory({ past: [], present: [], future: [] }); setSelectedIds(new Set()); setActiveId(null);
                 dbService.clearSession();
                 try {
@@ -628,6 +650,7 @@
                     count: t.count
                 }));
                 setTagManagerData(data);
+                setTagManagerSearch(""); // Reset search
                 setTagManagerOpen(true);
             };
 
@@ -637,17 +660,23 @@
                 ));
             };
 
-            const editTagManagerTag = (index) => {
-                const item = tagManagerData[index];
-                const newName = prompt("Rename tag globally:", item.current);
-                if (newName !== null) {
-                    const trimmed = newName.trim();
-                    if (trimmed) {
-                        setTagManagerData(prev => prev.map((t, i) => 
-                            i === index ? { ...t, current: trimmed } : t
-                        ));
-                    }
+            const openEditTagModal = (index) => {
+                setTagEditModal({
+                    open: true,
+                    index: index,
+                    value: tagManagerData[index].current
+                });
+            };
+
+            const saveEditTag = () => {
+                const { index, value } = tagEditModal;
+                const trimmed = value.trim();
+                if (trimmed) {
+                    setTagManagerData(prev => prev.map((t, i) => 
+                        i === index ? { ...t, current: trimmed } : t
+                    ));
                 }
+                setTagEditModal({ open: false, index: -1, value: "" });
             };
 
             const applyTagManagerChanges = () => {
@@ -846,8 +875,11 @@
                         {isMobile && <div className="flex justify-between items-center mb-4"><h1 className="font-bold text-lg text-white flex items-center gap-2 brand-title" onClick={() => setAboutModalOpen(true)}>Dataset Studio <span className="text-xs font-normal text-gray-400">| Aiiko Labs</span></h1><button onClick={() => setShowMobileTools(false)} className="fluent-btn">Close</button></div>}
                         {!isMobile && <h1 className="font-bold text-lg text-white mb-2 flex items-center gap-2 brand-title" onClick={() => setAboutModalOpen(true)}>Dataset Studio <span className="text-xs font-normal text-gray-400">| Aiiko Labs</span></h1>}
                         <div className="flex gap-2">
-                            <label className={`fluent-btn fluent-btn-primary flex-1 block text-center cursor-pointer ${loading ? 'opacity-50 pointer-events-none' : ''}`}>{loading ? "..." : "📂 Folder"}<input type="file" webkitdirectory="true" multiple className="hidden" onChange={handleFolderSelect} disabled={loading} /></label>
-                            <label className={`fluent-btn flex-1 block text-center cursor-pointer ${loading ? 'opacity-50 pointer-events-none' : ''}`}>📦 ZIP<input type="file" accept=".zip" className="hidden" onChange={handleZipSelect} disabled={loading} /></label>
+                            <button className={`fluent-btn fluent-btn-primary flex-1 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`} onClick={() => requestLoadFile('folder')} disabled={loading}>📂 Folder</button>
+                            <input type="file" webkitdirectory="true" multiple className="hidden" ref={folderInputRef} onChange={handleFolderSelect} disabled={loading} />
+                            
+                            <button className={`fluent-btn flex-1 flex items-center justify-center gap-2 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`} onClick={() => requestLoadFile('zip')} disabled={loading}>📦 ZIP</button>
+                            <input type="file" accept=".zip" className="hidden" ref={zipInputRef} onChange={handleZipSelect} disabled={loading} />
                         </div>
                         <div className="text-xs text-gray-400 mt-2 text-center flex justify-between"><span>Total: {files.length}</span>{history.past.length > 0 && <span className="text-gray-500 font-bold" title="Ctrl+Z to undo">↩ Undo</span>}</div>
                     </div>
@@ -1016,9 +1048,17 @@
                         <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
                             <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl w-full max-w-6xl flex flex-col h-[85vh]">
                                 <div className="p-4 border-b border-[#444] flex justify-between items-center bg-[#202020] rounded-t-lg">
-                                    <div>
-                                        <h2 className="text-lg font-bold text-white flex items-center gap-2"><Icon name="tags" /> Global Tag Manager</h2>
-                                        <p className="text-xs text-gray-400">Double click chip to rename. Click X to delete. Click Apply to save.</p>
+                                    <div className="flex items-center gap-4">
+                                        <h2 className="text-lg font-bold text-white flex items-center gap-2 flex-shrink-0"><Icon name="tags" /> Global Tag Manager</h2>
+                                        <div className="relative">
+                                            <Icon name="search" size={14} className="absolute left-2 top-2 text-gray-400"/>
+                                            <input 
+                                                className="fluent-input pl-8 py-1 text-xs w-64 rounded-full border-none bg-[#333] focus:bg-[#444]" 
+                                                placeholder="Search tags..." 
+                                                value={tagManagerSearch}
+                                                onChange={e => setTagManagerSearch(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="flex gap-2">
                                         <button onClick={applyTagManagerChanges} className="fluent-btn fluent-btn-success font-bold"><Icon name="save" size={16}/> Apply Changes</button>
@@ -1028,6 +1068,9 @@
                                 <div className="flex-1 overflow-y-auto p-4">
                                     <div className="flex flex-wrap gap-2 content-start">
                                         {tagManagerData.map((item, index) => {
+                                            // Search Filter Logic
+                                            if (tagManagerSearch && !item.current.toLowerCase().includes(tagManagerSearch.toLowerCase())) return null;
+
                                             if (item.deleted) {
                                                  return (
                                                     <span key={index} className="bg-[#3f1a1a] border border-[#5c1e1e] text-red-400 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 opacity-60">
@@ -1040,8 +1083,8 @@
                                             return (
                                                 <span 
                                                     key={index} 
-                                                    className={`${isModified ? 'bg-[#1a2e3f] border-[#0067c0] text-blue-200' : 'bg-[#333] border-[#555] text-white'} border text-xs px-3 py-1.5 rounded-full flex items-center gap-2 group hover:border-gray-400 transition-colors select-none`}
-                                                    onDoubleClick={() => editTagManagerTag(index)}
+                                                    className={`${isModified ? 'bg-[#1a2e3f] border-[#0067c0] text-blue-200' : 'bg-[#333] border-[#555] text-white'} border text-xs px-3 py-1.5 rounded-full flex items-center gap-2 group hover:border-gray-400 transition-colors select-none cursor-pointer`}
+                                                    onDoubleClick={() => openEditTagModal(index)}
                                                     title="Double click to rename"
                                                 >
                                                     <span>{item.current}</span>
@@ -1051,6 +1094,43 @@
                                             );
                                         })}
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {/* EDIT TAG MODAL (Replaces Prompt) */}
+                    {tagEditModal.open && (
+                        <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8" onClick={() => setTagEditModal({...tagEditModal, open: false})}>
+                            <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-white font-bold mb-4">Rename Tag</h3>
+                                <input 
+                                    className="fluent-input w-full mb-4" 
+                                    value={tagEditModal.value}
+                                    onChange={e => setTagEditModal({...tagEditModal, value: e.target.value})}
+                                    onKeyDown={e => e.key === 'Enter' && saveEditTag()}
+                                    autoFocus
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button onClick={() => setTagEditModal({...tagEditModal, open: false})} className="fluent-btn">Cancel</button>
+                                    <button onClick={saveEditTag} className="fluent-btn fluent-btn-primary">OK</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* CONFIRM LOAD MODAL (Replaces window.confirm) */}
+                    {confirmLoadModal.open && (
+                        <div className="fixed inset-0 modal-overlay flex items-center justify-center p-8">
+                            <div className="bg-[#252525] border border-[#444] rounded-lg shadow-2xl p-6 w-full max-w-md text-center">
+                                <div className="flex justify-center mb-4 text-yellow-400"><Icon name="alert-triangle" size={48} /></div>
+                                <h2 className="text-xl font-bold text-white mb-2">Unsaved Changes Warning</h2>
+                                <p className="text-gray-300 mb-6">
+                                    You are about to open a new dataset. Any unsaved changes, tags, or renames in your current session will be <b>PERMANENTLY LOST</b> unless you have exported them.
+                                </p>
+                                <div className="flex justify-center gap-3">
+                                    <button onClick={() => setConfirmLoadModal({open: false, type: null})} className="fluent-btn w-24">Cancel</button>
+                                    <button onClick={handleConfirmLoad} className="fluent-btn fluent-btn-danger w-24">Continue</button>
                                 </div>
                             </div>
                         </div>
@@ -1145,7 +1225,7 @@
                                 <h2 className="text-2xl font-bold text-white mb-1">Dataset Studio</h2>
                                 <p className="text-sm text-[#0067c0] font-bold mb-4">Aiiko Labs</p>
                                 <div className="text-gray-400 text-sm space-y-2 mb-6">
-                                    <p>Version 2.6 (Global Edition)</p>
+                                    <p>Version 2.7 (Global Edition)</p>
                                     <p>Professional tool for LoRa/SD dataset curation and management.</p>
                                 </div>
                                 <div className="border-t border-[#444] pt-4">
